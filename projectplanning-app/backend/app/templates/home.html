@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ProjectPlanning — Inicio</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+  <!-- NAVBAR -->
+  <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom">
+    <div class="container">
+      <a class="navbar-brand fw-bold" href="#">
+        ProjectPlanning
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navMain">
+        <ul class="navbar-nav ms-auto align-items-lg-center">
+          <li class="nav-item"><a class="nav-link" href="#">Inicio</a></li>
+          <li class="nav-item"><a class="nav-link" href="/projects/new/">Crear proyecto</a></li>
+          <li class="nav-item"><a class="nav-link" href="/projects/">Proyectos</a></li>
+          <li class="nav-item"><a class="nav-link" href="/commitments/">Compromisos</a></li>
+          <li class="nav-item"><a class="nav-link" href="/metrics/">Métricas</a></li>
+          <li class="nav-item ms-3"><a class="btn btn-outline-primary" href="/accounts/login/">Iniciar sesión</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <header class="py-5 mb-4">
+    <div class="container">
+      <div class="row align-items-center">
+        <div class="col-lg-7">
+          <h1 class="display-6 fw-bold">Gestión colaborativa de proyectos para ONGs</h1>
+          <p class="lead text-muted">
+            ProjectPlanning facilita la planificación, financiamiento y ejecución de proyectos
+            de mejora de condiciones habitacionales a escala local. Crea proyectos, solicita
+            recursos y coordina compromisos entre organizaciones de la red.
+          </p>
+          <div class="mt-4">
+            <a class="btn btn-primary me-2" href="/projects/new/">Crear nuevo proyecto</a>
+            <a class="btn btn-outline-secondary" href="/projects/">Ver proyectos</a>
+          </div>
+        </div>
+        <div class="col-lg-5 d-none d-lg-block">
+          <!-- Placeholder ilustrativo -->
+          <div class="card shadow-sm">
+            <div class="card-body text-center py-5">
+              <svg width="140" height="120" viewBox="0 0 24 24" fill="none" class="mb-3" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 13h18M6 6h12M6 20h12" stroke="#6c757d" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+              <p class="text-muted small mb-0">Panel de control — seguimiento de proyectos y compromisos</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ACTION CARDS -->
+  <section class="container mb-4">
+    <div class="row g-3">
+      <div class="col-md-6 col-lg-3">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title">Crear proyecto</h5>
+            <p class="card-text small text-muted">Cargar plan de trabajo, fechas y plan económico. Inicia el proceso en Bonita.</p>
+            <a href="{% url 'alta_proyecto' %}" class="btn btn-sm btn-primary">Alta</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-3">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title">Ver proyectos</h5>
+            <p class="card-text small text-muted">Listado de proyectos, estado de ejecución y acceso a las etapas.</p>
+            <a href="/projects/" class="btn btn-sm btn-primary">Explorar</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-3">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title">Compromisos</h5>
+            <p class="card-text small text-muted">Responder pedidos de ayuda: dinero, materiales o mano de obra.</p>
+            <a href="/commitments/" class="btn btn-sm btn-primary">Gestionar</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6 col-lg-3">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title">Métricas y seguimiento</h5>
+            <p class="card-text small text-muted">Reportes de tracking por proyecto y etapa, métricas del consejo directivo.</p>
+            <a href="/metrics/" class="btn btn-sm btn-primary">Ver reportes</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- INFO + RECENT PROJECTS -->
+  <section class="container mb-5">
+    <div class="row g-4">
+      <div class="col-lg-7">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title">¿Cómo funciona?</h5>
+            <p class="card-text text-muted">
+              Una ONG crea un proyecto y define las etapas del plan de trabajo y el plan económico.
+              Los pedidos de ayuda (económico, materiales, mano de obra) son notificados a la red.
+              Otras ONGs pueden comprometerse a aportar, y el consejo directivo realiza controles periódicos.
+            </p>
+
+            <ul class="list-unstyled small">
+              <li><strong>Notificaciones:</strong> los pedidos llegan a la red y se registran compromisos.</li>
+              <li><strong>Transparencia:</strong> seguimiento público de etapas y cumplimiento.</li>
+              <li><strong>Integración BPM:</strong> orquestación del proceso en Bonita (instanciación desde la app).</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-5">
+        <div class="card h-100">
+          <div class="card-body">
+            <h6 class="card-title">Últimos proyectos</h6>
+            <div class="table-responsive">
+              <table class="table table-sm">
+                <thead class="table-light">
+                  <tr>
+                    <th>Nombre</th>
+                    <th>ONG</th>
+                    <th>Inicio</th>
+                    <th>Fin</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- Ejemplos estáticos que podés reemplazar desde Django -->
+                  <tr>
+                    <td>Mejora plaza San Martín</td>
+                    <td>ONG A</td>
+                    <td>2025-03-01</td>
+                    <td>2025-05-30</td>
+                    <td><span class="badge bg-success">En ejecución</span></td>
+                  </tr>
+                  <tr>
+                    <td>Paneles solares barrio Norte</td>
+                    <td>ONG Verde</td>
+                    <td>2025-01-10</td>
+                    <td>2025-04-20</td>
+                    <td><span class="badge bg-warning text-dark">Pendiente</span></td>
+                  </tr>
+                  <tr>
+                    <td>Potabilización Río Chico</td>
+                    <td>AguaParaTodos</td>
+                    <td>2024-11-01</td>
+                    <td>2025-02-28</td>
+                    <td><span class="badge bg-secondary">Completado</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <a class="btn btn-sm btn-outline-primary mt-2" href="/projects/">Ver todos</a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="bg-white border-top py-3">
+    <div class="container d-flex justify-content-between small">
+      <div>© ProjectPlanning — Curso 2025</div>
+      <div>
+        <a href="/about/" class="me-3">Acerca</a>
+        <a href="/help/">Ayuda</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
