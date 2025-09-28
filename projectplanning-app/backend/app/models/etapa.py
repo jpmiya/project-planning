@@ -1,5 +1,5 @@
 from django.db import models
-from models.proyecto import Proyecto
+from .proyecto import Proyecto
 
 class Etapa(models.Model):
     id = models.AutoField(primary_key=True)

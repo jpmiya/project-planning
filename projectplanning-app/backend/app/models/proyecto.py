@@ -1,5 +1,5 @@
 from django.db import models
-from models.ong import ONG
+from .ong import ONG
 
 class Proyecto(models.Model):
     id = models.AutoField(primary_key=True)

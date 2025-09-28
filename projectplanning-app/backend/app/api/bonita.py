@@ -1,5 +1,6 @@
 import os, requests
 
+
 class BonitaAPI:
     def __init__(self):
         self.session = requests.Session()
@@ -128,4 +129,14 @@ class BonitaAPI:
             return True
         else:
             return False
+
+
+# Patron Singleton, en cada controlador llamo a esta función y me da una instancia de la api.
+def get_bonita_api() -> BonitaAPI:
+    """Returns a BonitaAPI instance"""
+    if not hasattr(get_bonita_api, "_instance"):
+        api = BonitaAPI()
+        api.login()
+        get_bonita_api._instance = api
+    return get_bonita_api._instance
 
