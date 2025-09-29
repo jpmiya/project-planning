@@ -5,8 +5,8 @@ class BonitaAPI:
     def __init__(self):
         self.session = requests.Session()
         self.authenticated = False
-        self.project_planning = 1 # Id que le asigno al proceso de project-planning
-        self.consulta_de_proyectos = 2 # Id que le asigno al proceso de consulta-de-proyectos
+        self.project_planning = 8845968318327328784 # Id que se asignó al proceso de project-planning
+        self.consulta_de_proyectos = 6956673571233875618 # Id que se asignó al proceso de consulta-de-proyectos
         
 
     def login(self) -> dict:
@@ -78,13 +78,13 @@ class BonitaAPI:
     
     def initiate_consulta_de_proyectos(self) -> int:
         """Instatiate a consulta-de-proyectos process by his id, and returns the caseId in Bonita if was instatiate, None otherwise"""
-        response = self.session.get(f"{os.getenv('BONITA_URL')}/API/bpm/process/{self.consulta_de_proyectos}/instantiation")
+        """response = self.session.get(f"{os.getenv('BONITA_URL')}/API/bpm/process/{self.consulta_de_proyectos}/instantiation")
 
         if response.status_code == 200:
             data = response.json()
             return data['caseId']
         else:
-            return None
+            return None"""
     
         
     def set_variable_by_case(self, case_id: int, variable: str, value, type: str) -> bool:
