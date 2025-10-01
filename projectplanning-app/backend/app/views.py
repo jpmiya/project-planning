@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from app.utils import procesar_etapas
 from app.controllers.projects import save_project
+from app.api.bonita import get_bonita_api 
 
 # Create your views here.
 def home(request):
@@ -29,6 +30,14 @@ def alta_proyecto(request):
         }
         save_project(data)
         messages.success(request, 'Proyecto creado exitosamente.')
+        # Llamadas de prueba
+        #api = get_bonita_api() # Funciona
+        #process_id = api.get_process_id("Project-Planning") # Funciona
+        #case_id = api.initiate_project_by_id(process_id) # Funciona
+        #activity = api.search_activity_by_case_id(case_id) # "Funciona", devuelve una lista vacia, seguro sea si por un tema del diagrama BPMN
+        #seteo = api.set_variable_by_case(case_id, "todas_etapas_cubiertas", False, "java.lang.Boolean") # Funciona
+        #completo = api.execute_user_task(activity) # Deberia funcionar, pero necesita el id de la actividad, y es lo que me devuelve una lista vacia
+        #task = api.assign_task(activity, "walter.bates") # No lo probe
         return redirect('home')
 
 
