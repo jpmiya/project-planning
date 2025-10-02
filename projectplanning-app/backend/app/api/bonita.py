@@ -35,7 +35,10 @@ class BonitaAPI:
         General request handler for Bonita API with auth headers
         """
         if not self.authenticated:
-            self.login()
+            login_result = self.login()
+            if not login_result:
+                print("ERROR: No se pudo autenticar con Bonita")
+                return None
 
         url = f"{os.getenv('BONITA_URL')}{uri}"
         headers = {
@@ -43,28 +46,45 @@ class BonitaAPI:
             "Content-Type": "application/json"
         }
 
-        response = self.session.request(method, url, headers=headers, json=json, params=params)
+        print(f"DEBUG: {method} {url}")
+        if json:
+            print(f"DEBUG: Payload: {json}")
+        if params:
+            print(f"DEBUG: Params: {params}")
 
-        if response.status_code in (200, 201, 204):
-            print("La consulta fue bien")
-            try:
-                return response.json() if response.text else None
-            except Exception:
+        try:
+            response = self.session.request(method, url, headers=headers, json=json, params=params)
+            
+            print(f"DEBUG: Status Code: {response.status_code}")
+            
+            if response.status_code in (200, 201, 204):
+                print("SUCCESS: La consulta fue exitosa")
+                try:
+                    if response.text:
+                        result = response.json()
+                        print(f"DEBUG: Response: {result}")
+                        return result
+                    else:
+                        return None
+                except Exception as e:
+                    print(f"ERROR: No se pudo parsear JSON: {e}")
+                    return None
+            else:
+                print(f"ERROR: La consulta falló - Status: {response.status_code}")
+                print(f"ERROR: Response: {response.text}")
                 return None
-        else:
-            print("La consulta fue mal")
-            print(f"Error {response.status_code}: {response.text}")
+        except Exception as e:
+            print(f"ERROR: Excepción en la request: {e}")
             return None
     
-    # No lo probe
     def get_processes(self) -> list[dict]:
         """Gets all the processes designed"""
-        response = self.do_request("GET", "/API/bpm/process")
+        response = self.do_request("GET", "/API/bpm/process?p=0&c=10")
         
-        if response: 
-            return response['Array']
+        if response and isinstance(response, list):
+            return response
         else:
-            return None
+            return []
     
     # No lo probe
     def get_cant_processes(self) -> int:
@@ -125,13 +145,19 @@ class BonitaAPI:
     def search_activity_by_case_id(self, case_id: str):
         """Returns the next activity to do in the case sended"""
         response = self.do_request("GET", f"/API/bpm/task?f=caseId={case_id}") # Probar con mandar parametros para mas prolijidad (en todos no en este solo)
-        return response[0]
+        
+        if response and len(response) > 0:
+            return response[0]
+        else:
+            print(f"No se encontraron tareas para el case_id: {case_id}")
+            return None
     
     
     def assign_task(self, task_id: str, user_id: str):
         """Assigns the task to the user sended"""
-        params = {"assigned_id": f"{user_id}"}
-        responde = self.do_request("PUT", f"/API/bpm/userTask/{task_id}", params=params)
+        payload = {"assigned_id": user_id}
+        response = self.do_request("PUT", f"/API/bpm/userTask/{task_id}", json=payload)
+        return response is not None
     
     
     def execute_user_task(self, task_id: str) -> bool:

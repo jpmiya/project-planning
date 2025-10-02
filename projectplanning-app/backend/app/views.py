@@ -30,14 +30,49 @@ def alta_proyecto(request):
         }
         save_project(data)
         messages.success(request, 'Proyecto creado exitosamente.')
-        # Llamadas de prueba
-        #api = get_bonita_api() # Funciona
-        #process_id = api.get_process_id("Project-Planning") # Funciona
-        #case_id = api.initiate_project_by_id(process_id) # Funciona
-        #activity = api.search_activity_by_case_id(case_id) # "Funciona", devuelve una lista vacia, seguro sea si por un tema del diagrama BPMN
-        #seteo = api.set_variable_by_case(case_id, "todas_etapas_cubiertas", False, "java.lang.Boolean") # Funciona
-        #completo = api.execute_user_task(activity) # Deberia funcionar, pero necesita el id de la actividad, y es lo que me devuelve una lista vacia
-        #task = api.assign_task(activity, "walter.bates") # No lo probe
+        
+        # Llamadas de prueba con manejo de errores
+        try:
+            api = get_bonita_api()
+            if not api.authenticated:
+                messages.warning(request, 'No se pudo conectar a Bonita. Revisa la configuración.')
+                return redirect('home')
+            
+            print("=== INICIANDO PROCESO BONITA ===")
+            process_id = api.get_process_id("Project-Planning")
+            if not process_id:
+                messages.error(request, 'No se encontró el proceso "Project-Planning" en Bonita.')
+                return redirect('home')
+            print(f"Process ID encontrado: {process_id}")
+            
+            case_id = api.initiate_project_by_id(process_id)
+            if not case_id:
+                messages.error(request, 'No se pudo iniciar el proceso en Bonita.')
+                return redirect('home')
+            print(f"Case ID creado: {case_id}")
+            
+            # Buscar actividades
+            activity = api.search_activity_by_case_id(case_id)
+            if activity:
+                print(f"Actividad encontrada: {activity}")
+                # Intentar ejecutar la tarea
+                task_id = activity.get('id')
+                if task_id:
+                    executed = api.execute_user_task(task_id)
+                    print(f"Tarea ejecutada: {executed}")
+            else:
+                print("No se encontraron actividades pendientes (esto puede ser normal)")
+            
+            # Setear variable
+            seteo = api.set_variable_by_case(case_id, "todas_etapas_cubiertas", False, "java.lang.Boolean")
+            print(f"Variable seteada: {seteo}")
+            
+            messages.info(request, f'Proceso Bonita iniciado con Case ID: {case_id}')
+            
+        except Exception as e:
+            print(f"ERROR en proceso Bonita: {e}")
+            messages.error(request, f'Error en Bonita: {str(e)}')
+        
         return redirect('home')
 
 
