@@ -5,6 +5,8 @@ from django.contrib import messages
 from app.utils import procesar_etapas
 from app.controllers.projects import save_project
 from app.api.bonita import get_bonita_api 
+import time
+
 
 # Create your views here.
 def home(request):
@@ -52,14 +54,16 @@ def alta_proyecto(request):
             print(f"Case ID creado: {case_id}")
             
             # Buscar actividades
+            time.sleep(1) # Esto es porque si le preguntas ni bien creas el proceso, a veces encuentra ya veces no, dejamos que lo guarde bien y despues consultamos 
             activity = api.search_activity_by_case_id(case_id)
             if activity:
                 print(f"Actividad encontrada: {activity}")
+                # Asigna la tarea a un usuario
+                bates = api.get_user_id_by_username("walter.bates")
+                api.assign_task(activity, bates)
                 # Intentar ejecutar la tarea
-                task_id = activity.get('id')
-                if task_id:
-                    executed = api.execute_user_task(task_id)
-                    print(f"Tarea ejecutada: {executed}")
+                executed = api.execute_user_task(activity)
+                print(f"Tarea ejecutada: {executed}")
             else:
                 print("No se encontraron actividades pendientes (esto puede ser normal)")
             

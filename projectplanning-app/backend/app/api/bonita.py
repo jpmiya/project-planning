@@ -146,8 +146,9 @@ class BonitaAPI:
         """Returns the next activity to do in the case sended"""
         response = self.do_request("GET", f"/API/bpm/task?f=caseId={case_id}") # Probar con mandar parametros para mas prolijidad (en todos no en este solo)
         
-        if response and len(response) > 0:
-            return response[0]
+        if response:
+            print(f"Actividad: {response[0].get("id")}")
+            return response[0].get("id")
         else:
             print(f"No se encontraron tareas para el case_id: {case_id}")
             return None
@@ -161,7 +162,8 @@ class BonitaAPI:
     
     
     def execute_user_task(self, task_id: str) -> bool:
-        """Execute the task and continue to the next task"""
+        """Execute the task and continue to the next task. WARNING: the task must be assigned to a user, 
+        otherwise it will not execute and produces a error"""
         response = self.do_request("POST", f"/API/bpm/userTask/{task_id}/execution", json=None)
         
         if response:
@@ -169,6 +171,16 @@ class BonitaAPI:
         else:
             return False
 
+
+    def get_user_id_by_username(self, user_name):
+        """Gets a user id by his username"""
+        response = self.do_request("GET", f"/API/identity/user?f=userName={user_name}")
+        
+        if response:
+            return response[0].get("id")
+        else:
+            return None
+        
 
 # Patron Singleton, en cada controlador llamo a esta función y me da una instancia de la api.
 def get_bonita_api() -> BonitaAPI:
