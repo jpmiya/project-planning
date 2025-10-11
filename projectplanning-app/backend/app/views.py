@@ -33,6 +33,13 @@ def alta_proyecto(request):
         save_project(data)
         messages.success(request, 'Proyecto creado exitosamente.')
         
+        print(etapas)
+        etapas_ayuda = {
+            nombre: datos
+            for nombre, datos in etapas.items()
+            if datos['ayuda'] == 'true'
+        }
+        print(etapas_ayuda)
         # Llamadas de prueba con manejo de errores
         try:
             api = get_bonita_api()

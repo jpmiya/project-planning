@@ -7,6 +7,7 @@ class Project(models.Model):
     fecha_fin = models.DateField()
     plan_economico = models.TextField()
     etapas = models.ManyToManyField('Etapa', blank=True)
+    case_id = models.CharField(max_length=255, null=False) # Clave en bonita del caso de proceso
 
     def __str__(self):
         return self.nombre
