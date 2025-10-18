@@ -8,12 +8,12 @@ class BonitaAPI:
         self.api_token = None  # Se guarda en el login
     
     
-    def login(self) -> dict | None:
+    def login(self, user: str, password: str) -> dict | None:
         """Logs into Bonita API. Returns the cookies if it logged, or None if not"""
         url = f"{os.getenv('BONITA_URL')}/loginservice"
         user_and_psw = {
-            "username": os.getenv('BONITA_USER'),
-            "password": os.getenv('BONITA_PSW')
+            "username": user, #os.getenv('BONITA_USER'),
+            "password": password, #os.getenv('BONITA_PSW')
         }
         response = self.session.post(url, data=user_and_psw)
 
@@ -161,10 +161,10 @@ class BonitaAPI:
         return response is not None
     
     
-    def execute_user_task(self, task_id: str) -> bool:
+    def execute_user_task(self, task_id: str, payload: dict | None = None) -> bool:
         """Execute the task and continue to the next task. WARNING: the task must be assigned to a user, 
         otherwise it will not execute and produces a error"""
-        response = self.do_request("POST", f"/API/bpm/userTask/{task_id}/execution", json=None)
+        response = self.do_request("POST", f"/API/bpm/userTask/{task_id}/execution", json=payload)
         
         if response:
             return True
@@ -172,7 +172,7 @@ class BonitaAPI:
             return False
 
 
-    def get_user_id_by_username(self, user_name):
+    def get_user_id_by_username(self, user_name: str) -> str:
         """Gets a user id by his username"""
         response = self.do_request("GET", f"/API/identity/user?f=userName={user_name}")
         
@@ -181,13 +181,78 @@ class BonitaAPI:
         else:
             return None
         
+    
+    def create_bonita_user(self, username: str, password: str, firstname: str, email: str, lastname: str, enabled: bool) -> str:
+        """Creates a user and returns his id in bonita"""
+        payload = {
+            "userName": username,
+            "password": password,
+            "password_confirm": password,
+            "firstname": firstname,
+            "lastname": lastname,
+            "enabled": str(enabled).lower(),
+        }
+        
+        response = self.do_request("POST", "/API/identity/user", json=payload)
+        if response:
+            user_id = response.get("id")
+            payload = {
+                "id": user_id,
+                "email": email,
+            }
+            response = self.do_request("PUT", f"/API/identity/personalcontactdata/{user_id}", json=payload)
+            return user_id
+        else:
+            return None
+    
+    
+    def delete_user_by_id(self, id: str):
+        """Deletes a user by his id"""
+        response = self.do_request("DELETE", f"/API/identity/user/{id}")
+        
+    
+    def get_group_id(self, group_name: str) -> str:
+        """Gets the group id by his name"""
+        response = self.do_request("GET", f"/API/identity/group?f=name={group_name}")
+        
+        if response:
+            return response[0].get("id")
+        else:
+            return None
+        
+    
+    def get_role_id(self, role_name: str) -> str:
+        """Gets the role id by his name"""
+        response = self.do_request("GET", f"/API/identity/role?f=name={role_name}")
+        
+        if response:
+            return response[0].get("id")
+        else:
+            return None
+        
+    
+    def create_membership(self, user_id, role_id, group_id) -> bool:
+        """Creates membership to a user, and returns de id of the user in the membership"""
+        payload = {
+            "role_id": role_id,
+            "group_id": group_id,
+            "user_id": user_id,
+        }
+        
+        response = self.do_request("POST", "/API/identity/membership", json=payload)
+        
+        if response:
+            return response.get("user_id")
+        else:
+            return None
 
+        
 # Patron Singleton, en cada controlador llamo a esta función y me da una instancia de la api.
-def get_bonita_api() -> BonitaAPI:
+def get_bonita_api(user: str, password: str) -> BonitaAPI:
     """Returns a BonitaAPI instance"""
     if not hasattr(get_bonita_api, "_instance"):
         api = BonitaAPI()
-        api.login()
+        api.login(user, password)
         get_bonita_api._instance = api
     return get_bonita_api._instance
 

@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.http import JsonResponse
 from app.utils import procesar_etapas
 from app.controllers.projects import save_project
 from app.api.bonita import get_bonita_api 
@@ -14,6 +15,11 @@ def home(request):
 
 def alta_proyecto(request):
     if request.method == 'GET':
+        """api = get_bonita_api("walter.bates", "bpm")
+        role_id = api.get_role_id("ONG-Coolaboradora")
+        group_id = api.get_group_id("Project-Planning")
+        user_id = api.get_user_id_by_username("franco.colapinto")
+        api.create_membership(user_id, role_id, group_id)"""
         return render(request, 'alta_proyecto.html')
     if request.method == 'POST':
         nombre = request.POST.get('nombre')
@@ -34,15 +40,32 @@ def alta_proyecto(request):
         messages.success(request, 'Proyecto creado exitosamente.')
         
         print(etapas)
-        etapas_ayuda = {
+        """etapas_ayuda = {
             nombre: datos
             for nombre, datos in etapas.items()
             if datos['ayuda'] == 'true'
-        }
-        print(etapas_ayuda)
+        }"""
+        etapas_ayuda = [
+            {
+                "id_etapa": str(1),  # buscarlo a la BBDD
+                "nombre_etapa": nombre,
+                "fecha_inicio": datos["inicio"],
+                "fecha_fin": datos["fin"]
+            }
+            for i, (nombre, datos) in enumerate(etapas.items())
+            if datos["ayuda"].lower() == "true"
+        ]
+        
+        payload = {
+                "id_proyecto": str(1), # Obtener el que da la BBDD
+                "nombre_proyecto": nombre,
+                "ong_originante": ong_responsable,
+                "etapas": etapas_ayuda,
+            }
+        
         # Llamadas de prueba con manejo de errores
         try:
-            api = get_bonita_api()
+            api = get_bonita_api("franco.colapinto", "Williams_Fw46")
             if not api.authenticated:
                 messages.warning(request, 'No se pudo conectar a Bonita. Revisa la configuración.')
                 return redirect('home')
@@ -66,10 +89,10 @@ def alta_proyecto(request):
             if activity:
                 print(f"Actividad encontrada: {activity}")
                 # Asigna la tarea a un usuario
-                bates = api.get_user_id_by_username("walter.bates")
+                bates = api.get_user_id_by_username("franco.colapinto")
                 api.assign_task(activity, bates)
                 # Intentar ejecutar la tarea
-                executed = api.execute_user_task(activity)
+                executed = api.execute_user_task(activity, payload)
                 print(f"Tarea ejecutada: {executed}")
             else:
                 print("No se encontraron actividades pendientes (esto puede ser normal)")
@@ -85,6 +108,16 @@ def alta_proyecto(request):
             messages.error(request, f'Error en Bonita: {str(e)}')
         
         return redirect('home')
+    
+    
+
+def obtener_destinatarios(request):
+    if request.method == "GET":
+        # Mail fijo, despues hacemos la busqueda
+        destinatarios = [
+            "francobasterrechea@mail.com",
+        ]
+        return JsonResponse(destinatarios, safe=False)
 
 
 # ===== VISTAS DE USUARIO (COMENTADAS TEMPORALMENTE) =====
