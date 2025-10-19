@@ -171,9 +171,9 @@ def mark_cumplido_fulfilled(request):
         return JsonResponse({"mensaje": "Estado de compromiso actualizado correctamente"}, status=200)
 
     return JsonResponse(serializer.errors, status=400)
-"""
-{
-  "id_compromiso": 1,
-  "cumplido": true
-}
-"""
+    """
+    {
+    "id_compromiso": 1,
+    "cumplido": true
+    }
+    """
