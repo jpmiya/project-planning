@@ -33,3 +33,7 @@ class CompromisoSerializer(serializers.ModelSerializer):
 class CumplidoSerializer(serializers.Serializer):
     id_compromiso = serializers.IntegerField()
     cumplido = serializers.BooleanField()
+
+
+class GetCompromisosSerializer(serializers.Serializer):
+    id_proyecto_back = serializers.CharField()

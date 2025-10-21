@@ -10,7 +10,7 @@ from api_core.settings import SECRET_KEY
 from api_projectplanning.decorators import require_jwt
 from api_projectplanning.serializers.etapa import EtapaSerializer
 from api_projectplanning.serializers.proyecto import ProyectoSerializer
-from api_projectplanning.serializers.compromiso import CompromisoSerializer, CumplidoSerializer
+from api_projectplanning.serializers.compromiso import CompromisoSerializer, CumplidoSerializer, GetCompromisosSerializer
 from api_projectplanning.models.compromiso import Compromiso
 
 
@@ -175,5 +175,45 @@ def mark_cumplido_fulfilled(request):
     {
     "id_compromiso": 1,
     "cumplido": true
+    }
+    """
+    
+
+@csrf_exempt
+@require_http_methods(["GET"])
+@require_jwt
+def get_commitments_by_project_id(request):
+    try:
+        payload = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "JSON inválido"}, status=400)
+    
+    serializer = GetCompromisosSerializer(data=payload)
+    if serializer.is_valid():
+        id_proyecto_back = serializer.validated_data["id_proyecto_back"]
+        try:
+            compromisos = Compromiso.objects.filter(etapa_cloud__proyecto_cloud__id_back_proyecto=id_proyecto_back)
+            if not compromisos.exists():
+                return JsonResponse({"compromisos":[{}], "aviso": "No hay compromisos para este proyecto"}, status=200)
+
+            data = [
+                {
+                    "id": compromiso.id,
+                    "nombre_ong": compromiso.nombre_ong_coolaboradora,
+                    "aporte": compromiso.aporte,
+                    "cantidad": compromiso.cantidad,
+                    "cumplido": compromiso.cumplido,
+                }
+                for compromiso in compromisos
+            ]
+
+            return JsonResponse({"compromisos": data, "aviso": "Se han encontrado compromisos para este proyecto"}, status=200)
+
+        except Exception as e:
+            return JsonResponse({"error": f"Error al obtener compromisos: {str(e)}"}, status=500)
+        
+        """
+    {
+    "id_proyecto_back": "1"
     }
     """
