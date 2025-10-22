@@ -130,3 +130,22 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+#esto es para crear el usuario la primera vez
+import os
+from django.contrib.auth import get_user_model
+
+if os.environ.get("CREATE_SUPERUSER", "false").lower() == "true":
+    from django.db.utils import OperationalError
+    try:
+        User = get_user_model()
+        if not User.objects.exists():
+            User.objects.create_superuser(
+                username=os.environ.get("DJANGO_SUPERUSER_USERNAME"),
+                email=os.environ.get("DJANGO_SUPERUSER_EMAIL"),
+                password=os.environ.get("DJANGO_SUPERUSER_PASSWORD")
+            )
+            print("✅ Superuser creado automáticamente")
+    except OperationalError:
+        pass
