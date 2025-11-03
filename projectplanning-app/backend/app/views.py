@@ -6,7 +6,9 @@ from django.http import JsonResponse
 from app.utils import procesar_etapas
 from app.controllers.projects import save_project
 from app.api.bonita import get_bonita_api 
-import time
+import time, json
+from django.views.decorators.http import require_GET
+from django.views.decorators.csrf import csrf_exempt
 
 
 # Create your views here.
@@ -39,12 +41,6 @@ def alta_proyecto(request):
         save_project(data)
         messages.success(request, 'Proyecto creado exitosamente.')
         
-        print(etapas)
-        """etapas_ayuda = {
-            nombre: datos
-            for nombre, datos in etapas.items()
-            if datos['ayuda'] == 'true'
-        }"""
         etapas_ayuda = [
             {
                 "id_etapa": str(1),  # buscarlo a la BBDD
@@ -60,8 +56,10 @@ def alta_proyecto(request):
                 "id_proyecto": str(1), # Obtener el que da la BBDD
                 "nombre_proyecto": nombre,
                 "ong_originante": ong_responsable,
-                "etapas": etapas_ayuda,
+                #"etapas": json.dumps(etapas_ayuda)
             }
+        
+        payload_json = json.dumps(payload)
         
         # Llamadas de prueba con manejo de errores
         try:
@@ -92,13 +90,19 @@ def alta_proyecto(request):
                 bates = api.get_user_id_by_username("franco.colapinto")
                 api.assign_task(activity, bates)
                 # Intentar ejecutar la tarea
-                executed = api.execute_user_task(activity, payload)
+                executed = api.execute_user_task(activity, {})
                 print(f"Tarea ejecutada: {executed}")
             else:
                 print("No se encontraron actividades pendientes (esto puede ser normal)")
             
             # Setear variable
             seteo = api.set_variable_by_case(case_id, "todas_etapas_cubiertas", False, "java.lang.Boolean")
+            print(f"Variable seteada: {seteo}")
+            
+            seteo = api.set_variable_by_case(case_id, "proyecto_case", payload_json, "java.lang.String")
+            print(f"Variable seteada: {seteo}")
+            
+            seteo = api.set_variable_by_case(case_id, "etapas", json.dumps(etapas_ayuda), "java.lang.String")
             print(f"Variable seteada: {seteo}")
             
             messages.info(request, f'Proceso Bonita iniciado con Case ID: {case_id}')
@@ -110,14 +114,14 @@ def alta_proyecto(request):
         return redirect('home')
     
     
-
+@csrf_exempt
+@require_GET
 def obtener_destinatarios(request):
-    if request.method == "GET":
-        # Mail fijo, despues hacemos la busqueda
-        destinatarios = [
-            "francobasterrechea@mail.com",
-        ]
-        return JsonResponse(destinatarios, safe=False)
+    # Mail fijo, despues hacemos la busqueda
+    destinatarios = [
+        "francobasterrechea@mail.com",
+    ]
+    return JsonResponse(destinatarios, safe=False)
 
 
 # ===== VISTAS DE USUARIO (COMENTADAS TEMPORALMENTE) =====

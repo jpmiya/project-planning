@@ -13,7 +13,9 @@ def save_project(data):
         requiere_ayuda = info_etapa['ayuda'].lower() == 'true'
         
         etapa = Etapa.objects.create(
-            nombre=nombre_etapa,  # La clave del diccionario es el nombre
+            nombre_etapa=nombre_etapa,  # La clave del diccionario es el nombre
+            nombre_aporte=info_etapa['aporte'],
+            cant_aporte_necesario=info_etapa['cantidad'],
             fecha_inicio=info_etapa['inicio'],
             fecha_fin=info_etapa['fin'], 
             requiere_ayuda=requiere_ayuda  # Convertir string a booleano
@@ -25,7 +27,9 @@ def save_project(data):
         ong_responsable=data['ong_responsable'],
         fecha_inicio=data['fecha_inicio'],
         fecha_fin=data['fecha_fin'],
-        plan_economico=data['plan_economico']
+        plan_economico=data['plan_economico'],
+        case_id=None,
+        cloud_id=None,
     )
     project.save()
     

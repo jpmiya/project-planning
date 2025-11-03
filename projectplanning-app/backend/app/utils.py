@@ -2,6 +2,7 @@ def procesar_etapas(request):
     etapas_dict = {}
     
     for key, value in request.POST.items():
+        print(f"Procesando etapas: key {key}, value {value}")
         if key.startswith('etapas['):
             parts = key[7:-1].split('][')
             if len(parts) == 2:

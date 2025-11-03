@@ -26,5 +26,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', views.home, name='home'),
     path('alta_proyecto/', views.alta_proyecto, name='alta_proyecto'),
-    path('destinatarios/', views.obtener_destinatarios, name='obtener_destinatarios'),
+    path('api/destinatarios/', views.obtener_destinatarios, name='obtener_destinatarios'),
+    #path('api/obtener_etapas_proyecto/<int:id_proyecto>/', views.obtener_etapas_proyecto, name='obtener_etapas_proyecto'),
+    #path('api/obtener_proyecto/<int:id_proyecto>/', views.obtener_proyecto, name='obtener_proyecto'),
 ]

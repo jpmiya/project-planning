@@ -51,6 +51,14 @@
             <label class="form-label">Nombre de la etapa</label>
             <input type="text" class="form-control etapa-nombre" required>
           </div>
+          <div class="mb-2">
+            <label class="form-label">Aporte necesario</label>
+            <input type="text" class="form-control aporte-necesario" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Cantidad de aporte necesario</label>
+            <input type="number" class="form-control cant-aporte" min="1" required>
+          </div>
           <div class="row">
             <div class="col-md-4 mb-2">
               <label class="form-label">Fecha de inicio</label>
@@ -93,6 +101,8 @@
     const etapas = container.querySelectorAll('.etapa');
     etapas.forEach((etapa, index) => {
       const nombre = etapa.querySelector('.etapa-nombre').value.trim();
+      const aporte = etapa.querySelector('.aporte-necesario').value.trim();
+      const cantidad = etapa.querySelector('.cant-aporte').value.trim();
       const inicio = etapa.querySelector('.etapa-inicio').value;
       const fin = etapa.querySelector('.etapa-fin').value;
       const ayuda = etapa.querySelector('.etapa-ayuda').checked ? 'true' : 'false';
@@ -117,6 +127,23 @@
         inputAyuda.name = `etapas[${nombre}][ayuda]`;
         inputAyuda.value = ayuda;
         hiddenContainer.appendChild(inputAyuda);
+
+        const inputAporte = document.createElement('input');
+        inputAporte.type = 'hidden';
+        inputAporte.name = `etapas[${nombre}][aporte]`;
+        inputAporte.value = aporte;
+        hiddenContainer.appendChild(inputAporte);
+
+        const inputCantidad = document.createElement('input');
+        inputCantidad.type = 'hidden';
+        inputCantidad.name = `etapas[${nombre}][cantidad]`;
+        inputCantidad.value = cantidad;
+        hiddenContainer.appendChild(inputCantidad);
+      }
+
+      if (isNaN(cantidad) || cantidad <= 0) {
+        alert(`La cantidad de aporte en la etapa "${nombre}" debe ser un número positivo.`);
+        return;
       }
     });
   }
