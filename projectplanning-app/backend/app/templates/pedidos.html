@@ -1,21 +1,22 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <title>Pedidos - Proyectos</title>
-    <style>
+{% extends 'base.html' %}
+
+{% block title %}Pedidos — ProjectPlanning{% endblock %}
+
+{% block extra_head %}
+<style>
         table { width: 100%; border-collapse: collapse; }
         th, td { padding: 8px 12px; border: 1px solid #ddd; }
         th { background: #f4f4f4; }
         .actions { text-align: center; }
         .small { font-size: .9em; color: #666; }
-    </style>
-</head>
-<body>
-    <h1>Pedidos (Proyectos)</h1>
+</style>
+{% endblock %}
+
+{% block content %}
+    <h1 class="mb-3">Pedidos (Proyectos)</h1>
 
     {% if proyectos and proyectos|length > 0 %}
-        <table>
+        <table class="table table-striped">
             <thead>
                 <tr>
                     <th>Nombre</th>
@@ -47,5 +48,4 @@
     {% endif %}
 
     <p><a href="{% url 'home' %}">Volver al inicio</a></p>
-</body>
-</html>
+{% endblock %}

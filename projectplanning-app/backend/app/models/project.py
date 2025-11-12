@@ -6,9 +6,12 @@ class Project(models.Model):
     fecha_inicio = models.DateField()
     fecha_fin = models.DateField()
     plan_economico = models.TextField()
-    etapas = models.ManyToManyField('Etapa', blank=True)
     case_id = models.IntegerField(null=True, blank=True) # Clave en bonita del caso de proceso
     cloud_id = models.IntegerField(null=True, blank=True) # Clave asignada en el cloud
 
     def __str__(self):
         return self.nombre
+    
+    
+    def get_back_id(self) -> int:
+        return self.id

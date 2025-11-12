@@ -1,23 +1,52 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
+from app.decorators import role_required
 from app.utils import procesar_etapas
-from app.controllers.projects import save_project
+from app.controllers.projects import save_project, save_etapas
 from app.api.bonita import get_bonita_api 
 import time, json
 from django.views.decorators.http import require_GET
 from django.views.decorators.csrf import csrf_exempt
 from app.models.project import Project
 from app.models.etapa import Etapa
-from django.db import transaction
+from app.models.ong import ONG
+from app.services.proyectos import process_offers, ProyectosServiceError
+from app.forms import RegistrationForm
+from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth import login as auth_login, logout as auth_logout
 
 
 # Create your views here.
+@login_required
 def home(request):
     return render(request, 'home.html')
 
+
+def register(request):
+    """Registrar un nuevo usuario usando el formulario estándar de Django.
+
+    - GET: muestra el formulario
+    - POST: valida y crea el usuario, inicia sesión y redirige a `home`
+    """
+    if request.method == 'POST':
+        form = RegistrationForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            messages.success(request, f'Usuario {user.username} creado exitosamente. Ya estás conectado.')
+            # Iniciar sesión automáticamente
+            auth_login(request, user)
+            return redirect('home')
+        else:
+            messages.error(request, 'Por favor corrige los errores en el formulario.')
+    else:
+        form = RegistrationForm()
+
+    return render(request, 'registration/register.html', {'form': form})
+
+@login_required
 def alta_proyecto(request):
     if request.method == 'GET':
         """api = get_bonita_api("walter.bates", "bpm")
@@ -28,41 +57,36 @@ def alta_proyecto(request):
         return render(request, 'alta_proyecto.html')
     if request.method == 'POST':
         nombre = request.POST.get('nombre')
-        ong_responsable = request.POST.get('ong')
+        ong_responsable = request.user.first_name
         fecha_inicio = request.POST.get('fecha_inicio')
         fecha_fin = request.POST.get('fecha_fin')
         plan_economico = request.POST.get('plan_economico')
         etapas = procesar_etapas(request)
         data = {
             'nombre': nombre,
-            'ong_responsable': ong_responsable,
+            'ong_responsable': ONG.objects.get(nombre_ong= ong_responsable).id_ong,
             'fecha_inicio': fecha_inicio,
             'fecha_fin': fecha_fin,
             'plan_economico': plan_economico,
             'etapas': etapas
         }
-        save_project(data)
+        project = save_project(data)
+        etapas = save_etapas(data, project)
         messages.success(request, 'Proyecto creado exitosamente.')
         
         etapas_ayuda = [
             {
-                "id_etapa": str(1),  # buscarlo a la BBDD
-                "nombre_etapa": nombre,
-                "fecha_inicio": datos["inicio"],
-                "fecha_fin": datos["fin"]
+                "id_back_etapa": etapa.id,
+                "nombre": etapa.nombre_etapa,
+                "aporte_necesario": etapa.nombre_aporte,
+                "cantidad": etapa.cant_aporte_necesario,
+                "fecha_inicio": etapa.fecha_inicio,
+                "fecha_fin": etapa.fecha_fin,
+                "id_proyecto_back": str(project.id)
             }
-            for i, (nombre, datos) in enumerate(etapas.items())
-            if datos["ayuda"].lower() == "true"
+            for etapa in etapas
+            if etapa.requiere_ayuda
         ]
-        
-        payload = {
-                "id_proyecto": str(1), # Obtener el que da la BBDD
-                "nombre_proyecto": nombre,
-                "ong_originante": ong_responsable,
-                #"etapas": json.dumps(etapas_ayuda)
-            }
-        
-        payload_json = json.dumps(payload)
         
         # Llamadas de prueba con manejo de errores
         try:
@@ -82,7 +106,33 @@ def alta_proyecto(request):
             if not case_id:
                 messages.error(request, 'No se pudo iniciar el proceso en Bonita.')
                 return redirect('home')
+            
             print(f"Case ID creado: {case_id}")
+            
+            # Setear variable
+            seteo = api.set_variable_by_case(case_id, "todas_etapas_cubiertas", False, "java.lang.Boolean")
+            print(f"Variable seteada: {seteo}")
+            
+            payload = {
+                    "id_back_proyecto": str(project.id), # Obtener el que da la BBDD
+                    "nombre": nombre,
+                    "ong_responsable": ong_responsable,
+                    "id_back_ong": ONG.objects.get(nombre_ong= ong_responsable).id_ong,
+                    "fecha_inicio": fecha_inicio,
+                    "fecha_fin": fecha_fin,
+                    "case_id": case_id,
+                    #"etapas": json.dumps(etapas_ayuda)
+                }
+            
+            payload_json = json.dumps(payload)
+            
+            seteo = api.set_variable_by_case(case_id, "proyecto_case", payload_json, "java.lang.String")
+            print(f"Variable seteada: {seteo}")
+            
+            seteo = api.set_variable_by_case(case_id, "etapas", json.dumps(etapas_ayuda), "java.lang.String")
+            print(f"Variable seteada: {seteo}")
+            
+            messages.info(request, f'Proceso Bonita iniciado con Case ID: {case_id}')
             
             # Buscar actividades
             time.sleep(1) # Esto es porque si le preguntas ni bien creas el proceso, a veces encuentra ya veces no, dejamos que lo guarde bien y despues consultamos 
@@ -98,17 +148,6 @@ def alta_proyecto(request):
             else:
                 print("No se encontraron actividades pendientes (esto puede ser normal)")
             
-            # Setear variable
-            seteo = api.set_variable_by_case(case_id, "todas_etapas_cubiertas", False, "java.lang.Boolean")
-            print(f"Variable seteada: {seteo}")
-            
-            seteo = api.set_variable_by_case(case_id, "proyecto_case", payload_json, "java.lang.String")
-            print(f"Variable seteada: {seteo}")
-            
-            seteo = api.set_variable_by_case(case_id, "etapas", json.dumps(etapas_ayuda), "java.lang.String")
-            print(f"Variable seteada: {seteo}")
-            
-            messages.info(request, f'Proceso Bonita iniciado con Case ID: {case_id}')
             
         except Exception as e:
             print(f"ERROR en proceso Bonita: {e}")
@@ -116,7 +155,7 @@ def alta_proyecto(request):
         
         return redirect('home')
     
-    
+@login_required
 @csrf_exempt
 @require_GET
 def obtener_destinatarios(request):
@@ -126,90 +165,31 @@ def obtener_destinatarios(request):
     ]
     return JsonResponse(destinatarios, safe=False)
 
-def listar_pedidos(request):
-    # Esta función se mantiene para compatibilidad pero delega a la vista completa
-    return pedidos_view(request)
-
-
+@login_required
 def pedidos_view(request):
     """Muestra un listado de proyectos (pedidos) con botón para ver etapas."""
     proyectos = Project.objects.all().prefetch_related('etapas')
     return render(request, 'pedidos.html', {'proyectos': proyectos})
 
-
+@login_required
 def ver_etapas(request, project_id):
     """Muestra y permite marcar en qué etapas el usuario puede ayudar."""
     proyecto = get_object_or_404(Project, pk=project_id)
     etapas = proyecto.etapas.all()
     if request.method == 'POST':
-        # Procesar ofertas enviadas por el usuario
         seleccionadas = request.POST.getlist('ayuda')  # lista de ids de etapas seleccionadas
-
-        aportes = []
 
         if not seleccionadas:
             messages.info(request, 'No enviaste aportes.')
             return redirect('pedidos')
 
-        # Verificar que el proyecto tenga case_id antes de comenzar la transacción
-        case_id = proyecto.case_id
-        if not case_id:
-            messages.error(request, 'El proyecto no tiene un case_id asociado en Bonita.')
-            return redirect('ver_etapas', project_id=project_id)
-
         try:
-            api = get_bonita_api()
-
-            # Usamos una transacción con select_for_update para prevenir condiciones de carrera
-            with transaction.atomic():
-                for etapa in etapas:
-                    eid = str(etapa.id)
-                    if eid in seleccionadas:
-                        if not etapa.requiere_ayuda:
-                            raise ValueError(f'La etapa "{etapa.nombre_aporte}" no está solicitando ayuda.')
-
-                        aporte_text = request.POST.get(f'aporte_{eid}', '').strip()
-                        cantidad_raw = request.POST.get(f'cantidad_{eid}', '').strip()
-
-                        # validar cantidad como entero positivo
-                        try:
-                            cantidad = int(cantidad_raw) if cantidad_raw != '' else None
-                        except ValueError:
-                            raise ValueError(f'Cantidad inválida para la etapa "{etapa.nombre_aporte}".')
-
-                        if cantidad is None or cantidad <= 0:
-                            raise ValueError(f'Debe indicar una cantidad válida para la etapa "{etapa.nombre_aporte}".')
-                        etapa_locked = Etapa.objects.select_for_update().get(pk=etapa.id)
-                        if cantidad > etapa_locked.cant_aporte_necesario:
-                            raise ValueError(f'La cantidad solicitada para "{etapa.nombre_aporte}" excede la necesaria ({etapa_locked.cant_aporte_necesario}).')
-
-                        # Decrementar y guardar (queda dentro de la transacción)
-                        etapa_locked.cant_aporte_necesario = etapa_locked.cant_aporte_necesario - cantidad
-                        etapa_locked.save()
-
-                        aportes.append({
-                            'etapa_id': etapa_locked.id,
-                            'etapa_nombre': etapa_locked.nombre_aporte,
-                            'aporte': aporte_text,
-                            'cantidad': cantidad,
-                        })
-
-                # Enviar las variables a Bonita para que las reenvíe al cloud
-                payload = json.dumps(aportes)
-                ok = api.set_variable_by_case(case_id, 'compromisos', payload, 'java.lang.String')
-
-                if not ok:
-                    # Forzar rollback de la transacción
-                    raise RuntimeError('Ocurrió un error al enviar los compromisos a Bonita.')
-
-            # Si llegamos acá, la transacción se completó y el envío a Bonita fue OK
+            result = process_offers(proyecto, seleccionadas, request.POST, user=request.user if request.user.is_authenticated else None)
             messages.success(request, 'Tus compromisos fueron enviados a Bonita.')
-
-        except ValueError as ve:
-            messages.error(request, str(ve))
+        except ProyectosServiceError as pse:
+            messages.error(request, str(pse))
             return redirect('ver_etapas', project_id=project_id)
         except Exception as e:
-            # Errores generales (incluye fallo en el set_variable_by_case)
             messages.error(request, f'Error procesando los compromisos: {e}')
             return redirect('ver_etapas', project_id=project_id)
 
@@ -220,6 +200,34 @@ def ver_etapas(request, project_id):
         'etapas': etapas,
     })
 
+
+def custom_login_view(request):
+    """Vista de login usando AuthenticationForm de Django."""
+    if request.method == 'POST':
+        form = AuthenticationForm(request, data=request.POST)
+        if form.is_valid():
+            user = form.get_user()
+            auth_login(request, user)
+            messages.success(request, f'¡Bienvenido {user.profile.full_name}!')
+            next_url = request.GET.get('next', 'home')
+            return redirect(next_url)
+        else:
+            messages.error(request, 'Credenciales incorrectas.')
+    else:
+        form = AuthenticationForm()
+
+    return render(request, 'registration/login.html', {'form': form})
+
+@login_required
+def custom_logout_view(request):
+    """Logout simple y redirect a home."""
+    auth_logout(request)
+    messages.info(request, 'Has cerrado sesión exitosamente.')
+    return redirect('login')
+
+@role_required('Gerente')
+def gerente_view(request):
+    return render(request, 'gerente.html')
 
 # ===== VISTAS DE USUARIO (COMENTADAS TEMPORALMENTE) =====
 

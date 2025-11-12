@@ -17,18 +17,18 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from app import views
-from django.contrib import admin
-from django.urls import path, include
-
-from app import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', views.home, name='home'),
     path('alta_proyecto/', views.alta_proyecto, name='alta_proyecto'),
     path('api/destinatarios/', views.obtener_destinatarios, name='obtener_destinatarios'),
-    path('pedidos/', views.listar_pedidos, name='pedidos'),
+    path('pedidos/', views.pedidos_view, name='pedidos'),
     path('proyecto/<int:project_id>/etapas/', views.ver_etapas, name='ver_etapas'),
+    path('register/', views.register, name='register'),
+    path('login/', views.custom_login_view, name='login'),
+    path('logout/', views.custom_logout_view, name='logout'),
+    path('gerente', views.gerente_view, name='gerente'),
     #path('api/obtener_etapas_proyecto/<int:id_proyecto>/', views.obtener_etapas_proyecto, name='obtener_etapas_proyecto'),
     #path('api/obtener_proyecto/<int:id_proyecto>/', views.obtener_proyecto, name='obtener_proyecto'),
 ]
