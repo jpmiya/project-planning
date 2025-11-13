@@ -1,5 +1,5 @@
 from django.db import models
-
+from app.models.project import Project
 
 class Etapa(models.Model):
     nombre_etapa = models.CharField(max_length=255)
@@ -10,7 +10,7 @@ class Etapa(models.Model):
     fecha_fin = models.DateField()
     requiere_ayuda = models.BooleanField(default=False)
     proyecto = models.ForeignKey(
-        'Project',
+        Project,
         on_delete=models.CASCADE,
         related_name='etapas'
     )

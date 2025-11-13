@@ -1,12 +1,14 @@
+from os import getenv
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
+import requests
 from app.decorators import role_required
-from app.utils import procesar_etapas
 from app.controllers.projects import save_project, save_etapas
 from app.api.bonita import get_bonita_api 
+from app.utils import procesar_etapas, obtain_cloud_token, fetch_commitments_from_cloud
 import time, json
 from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt
@@ -183,7 +185,7 @@ def pedidos_view(request):
 
 @login_required
 def ver_etapas(request, project_id):
-    """Muestra y permite marcar en qué etapas el usuario puede ayudar."""
+    """Muestra las etapas de un proyecto, y recibe compromisos."""
     proyecto = get_object_or_404(Project, pk=project_id)
     etapas = proyecto.etapas.all()
     if request.method == 'POST':
@@ -237,68 +239,71 @@ def custom_logout_view(request):
 
 @role_required('Gerente')
 def gerente_view(request):
-    return render(request, 'gerente.html')
+    """Vista para acciones de gerente. Si se pasa ?project=<id> muestra el proyecto seleccionado."""
+    project_id = request.GET.get('project')
+    proyecto = None
+    if project_id:
+        try:
+            proyecto = get_object_or_404(Project, pk=int(project_id))
+        except Exception:
+            proyecto = None
 
-# ===== VISTAS DE USUARIO (COMENTADAS TEMPORALMENTE) =====
-
-# def register_view(request):
-#     """Vista para registro de nuevos usuarios"""
-#     if request.method == 'POST':
-#         form = CustomUserCreationForm(request.POST)
-#         if form.is_valid():
-#             user = form.save()
-#             messages.success(request, f'Usuario {user.username} creado exitosamente. Ya puedes iniciar sesión.')
-#             return redirect('login')
-#         else:
-#             messages.error(request, 'Por favor corrige los errores en el formulario.')
-#     else:
-#         form = CustomUserCreationForm()
-#     
-#     return render(request, 'registration/register.html', {'form': form})
+    # Por ahora renderizamos la plantilla con el proyecto (o None)
+    return render(request, 'gerente.html', {'proyecto': proyecto})
 
 
-# def custom_login_view(request):
-#     """Vista personalizada de login"""
-#     if request.method == 'POST':
-#         username = request.POST.get('username')
-#         password = request.POST.get('password')
-#         
-#         user = authenticate(request, username=username, password=password)
-#         if user is not None:
-#             login(request, user)
-#             messages.success(request, f'¡Bienvenido {user.profile.full_name}!')
-#             next_url = request.GET.get('next', 'home')
-#             return redirect(next_url)
-#         else:
-#             messages.error(request, 'Credenciales incorrectas.')
-#     
-#     return render(request, 'registration/login.html')
+@login_required
+def projects_view(request):
+    """Listado 'Mis Proyectos' — proyectos creados por el usuario actual.
+
+    Se determina pertenencia comparando `Project.ong_responsable` con
+    `request.user.profile.full_name` o `request.user.first_name` para mantener
+    compatibilidad con datos existentes.
+    """
+    user = request.user
+    # The project.ong_responsable field stores the creating user's id (as string or int).
+    owner_id_str = str(user.id)
+
+    proyectos = Project.objects.filter(ong_responsable__in=[owner_id_str]).prefetch_related('etapas')
+
+    return render(request, 'mis_proyectos.html', {'proyectos': proyectos})
 
 
-# def custom_logout_view(request):
-#     """Vista personalizada de logout"""
-#     logout(request)
-#     messages.info(request, 'Has cerrado sesión exitosamente.')
-#     return redirect('home')
+@login_required
+def project_compromises(request, project_id):
+    """Muestra los compromisos externos de un proyecto (GET) y permite
+    marcar el proyecto como Finalizado (POST).
 
+    El acceso está limitado: solo el usuario que creó el proyecto puede
+    ver/editar su estado (comparando `ong_responsable` con el nombre del usuario).
+    """
+    proyecto = get_object_or_404(Project, pk=project_id)
+    user = request.user
+    owner_id_str = str(user.id)
 
-# @login_required
-# def profile_view(request):
-#     """Vista para ver y editar el perfil del usuario"""
-#     profile = request.user.profile
-#     
-#     if request.method == 'POST':
-#         form = UserProfileUpdateForm(request.POST, instance=profile)
-#         if form.is_valid():
-#             form.save()
-#             messages.success(request, 'Perfil actualizado exitosamente.')
-#             return redirect('profile')
-#         else:
-#             messages.error(request, 'Por favor corrige los errores en el formulario.')
-#     else:
-#         form = UserProfileUpdateForm(instance=profile)
-#     
-#     return render(request, 'registration/profile.html', {
-#         'form': form,
-#         'profile': profile
-#     })
+    if str(proyecto.ong_responsable) != owner_id_str:
+        messages.error(request, 'No tienes permisos para acceder a los compromisos de este proyecto.')
+        return redirect('mis_proyectos')
+
+    # POST: marcar como finalizado
+    if request.method == 'POST':
+        proyecto.estado = Project.ESTADO_FINALIZADO if hasattr(Project, 'ESTADO_FINALIZADO') else 'Finalizado'
+        proyecto.save()
+        messages.success(request, 'Proyecto marcado como Finalizado.')
+        return redirect('mis_proyectos')
+
+    # GET: intentar obtener compromisos desde la API cloud si existe (cliente externo)
+    commitments = []
+    api_error = None
+    try:
+        commitments = fetch_commitments_from_cloud(proyecto.id)
+    except Exception as e:
+        api_error = str(e)
+
+    if api_error:
+        messages.info(request, f'No se pudieron obtener los compromisos remotos: {api_error}')
+
+    return render(request, 'compromisos.html', {
+        'proyecto': proyecto,
+        'commitments': commitments,
+    })

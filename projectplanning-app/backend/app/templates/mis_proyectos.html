@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2>Mis Proyectos</h2>
+  {% if proyectos %}
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Nombre</th>
+        <th>Estado</th>
+        <th>Fechas</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in proyectos %}
+      <tr>
+        <td>{{ p.nombre }}</td>
+        <td>{{ p.estado }}</td>
+        <td>{{ p.fecha_inicio }} - {{ p.fecha_fin }}</td>
+        <td>
+          <a href="{% url 'project_compromises' p.id %}" class="btn btn-sm btn-primary">Ver compromisos</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No tenés proyectos creados.</p>
+  {% endif %}
+</div>
+{% endblock %}

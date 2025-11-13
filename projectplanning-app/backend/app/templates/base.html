@@ -22,6 +22,7 @@
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
           <li class="nav-item"><a class="nav-link btn btn-sm btn-outline-primary ms-2" href="{% url 'alta_proyecto' %}">Alta proyecto</a></li>
           <li class="nav-item"><a class="nav-link btn btn-sm btn-outline-primary ms-2" href="{% url 'pedidos' %}">Pedidos</a></li>
+          <li class="nav-item"><a class="nav-link btn btn-sm btn-outline-primary ms-2" href="{% url 'mis_proyectos' %}">Mis proyectos</a></li>
           {% if request.user.is_authenticated %}
             {% for g in request.user.groups.all %}
               {% if g.name == 'Gerente' %}

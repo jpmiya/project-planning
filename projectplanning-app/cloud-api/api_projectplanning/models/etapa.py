@@ -1,5 +1,5 @@
 from django.db import models
-from models.proyecto import Project
+from .proyecto import Project
 
 
 class Etapa(models.Model):

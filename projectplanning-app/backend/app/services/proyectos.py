@@ -53,10 +53,10 @@ def process_offers(project, seleccionadas, post_data, user=None):
                     raise ProyectosServiceError(f'Debe indicar una cantidad válida para la etapa "{etapa.nombre_aporte}".')
 
                 etapa_locked = Etapa.objects.select_for_update().get(pk=etapa.id)
-                if cantidad > etapa_locked.cant_aporte_necesario:
+                if cantidad + etapa_locked.cant_aporte_actual > etapa_locked.cant_aporte_necesario:
                     raise ProyectosServiceError(f'La cantidad solicitada para "{etapa.nombre_aporte}" excede la necesaria ({etapa_locked.cant_aporte_necesario}).')
 
-                etapa_locked.cant_aporte_actual = etapa_locked.cant_aporte_necesario - cantidad
+                etapa_locked.cant_aporte_actual =etapa_locked.cant_aporte_actual + cantidad
                 etapa_locked.save()
                 ong_coolaboradora = User.objects.get(username=post_data.user)
                 

@@ -1,5 +1,5 @@
 from django.db import models
-from models.etapa import Etapa
+from api_projectplanning.models.etapa import Etapa
 
 
 class Compromiso(models.Model):

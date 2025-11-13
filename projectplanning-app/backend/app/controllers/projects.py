@@ -13,7 +13,6 @@ def save_project(data) -> Project:
         fecha_fin=data['fecha_fin'],
         plan_economico=data['plan_economico'],
         case_id=None,
-        cloud_id=None,
     )
     project.save()
         
@@ -31,6 +30,7 @@ def save_etapas(data, project) -> list:
             nombre_etapa=nombre_etapa,  # La clave del diccionario es el nombre
             nombre_aporte=info_etapa['aporte'],
             cant_aporte_necesario=info_etapa['cantidad'],
+            cant_aporte_actual=0,
             fecha_inicio=info_etapa['inicio'],
             fecha_fin=info_etapa['fin'], 
             requiere_ayuda=requiere_ayuda  # Convertir string a booleano
