@@ -5,10 +5,10 @@ class Etapa(models.Model):
     nombre_etapa = models.CharField(max_length=255)
     nombre_aporte = models.CharField(max_length=255)
     cant_aporte_necesario = models.IntegerField()
+    cant_aporte_actual = models.IntegerField()
     fecha_inicio = models.DateField()
     fecha_fin = models.DateField()
     requiere_ayuda = models.BooleanField(default=False)
-    cloud_id = models.IntegerField(null=True, blank=True)
     proyecto = models.ForeignKey(
         'Project',
         on_delete=models.CASCADE,

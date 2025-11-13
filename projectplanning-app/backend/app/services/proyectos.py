@@ -2,6 +2,8 @@ import json
 from django.db import transaction
 from app.api.bonita import get_bonita_api
 from app.models.etapa import Etapa
+from django.contrib.auth.models import User
+import datetime
 
 
 class ProyectosServiceError(Exception):
@@ -27,9 +29,7 @@ def process_offers(project, seleccionadas, post_data, user=None):
 
     case_id = getattr(project, 'case_id', None)
     if not case_id:
-        raise ProyectosServiceError('El proyecto no tiene un case_id asociado en Bonita.')
-
-    api = get_bonita_api()
+        raise ProyectosServiceError('El proyecto no tiene un case_id asociado en Bonita.')    
 
     aportes = []
 
@@ -56,18 +56,24 @@ def process_offers(project, seleccionadas, post_data, user=None):
                 if cantidad > etapa_locked.cant_aporte_necesario:
                     raise ProyectosServiceError(f'La cantidad solicitada para "{etapa.nombre_aporte}" excede la necesaria ({etapa_locked.cant_aporte_necesario}).')
 
-                etapa_locked.cant_aporte_necesario = etapa_locked.cant_aporte_necesario - cantidad
+                etapa_locked.cant_aporte_actual = etapa_locked.cant_aporte_necesario - cantidad
                 etapa_locked.save()
-
+                ong_coolaboradora = User.objects.get(username=post_data.user)
+                
                 aportes.append({
-                    'etapa_id': etapa_locked.id,
+                    'nombre_ong_coolaboradora': ong_coolaboradora.first_name,
+                    'id_ong_coolaboradora': ong_coolaboradora.id,
+                    'id_etapa_back': etapa_locked.id,
                     'etapa_nombre': etapa_locked.nombre_aporte,
                     'aporte': aporte_text,
                     'cantidad': cantidad,
+                    'fecha_compromiso': datetime.date.today,
+                    'cumplido': False,
                 })
 
         # Enviar las variables a Bonita
         payload = json.dumps(aportes)
+        api = get_bonita_api("franco.colapinto", "Williams_Fw46")
         ok = api.set_variable_by_case(case_id, 'compromisos', payload, 'java.lang.String')
         if not ok:
             # Forzar rollback

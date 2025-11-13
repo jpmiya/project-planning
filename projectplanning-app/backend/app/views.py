@@ -8,7 +8,7 @@ from app.utils import procesar_etapas
 from app.controllers.projects import save_project, save_etapas
 from app.api.bonita import get_bonita_api 
 import time, json
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt
 from app.models.project import Project
 from app.models.etapa import Etapa
@@ -17,6 +17,8 @@ from app.services.proyectos import process_offers, ProyectosServiceError
 from app.forms import RegistrationForm
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import login as auth_login, logout as auth_logout
+from django.contrib.auth.models import User
+from django.http import HttpResponse
 
 
 # Create your views here.
@@ -57,14 +59,14 @@ def alta_proyecto(request):
         return render(request, 'alta_proyecto.html')
     if request.method == 'POST':
         nombre = request.POST.get('nombre')
-        ong_responsable = request.user.first_name
+        ong_responsable = request.user
         fecha_inicio = request.POST.get('fecha_inicio')
         fecha_fin = request.POST.get('fecha_fin')
         plan_economico = request.POST.get('plan_economico')
         etapas = procesar_etapas(request)
         data = {
             'nombre': nombre,
-            'ong_responsable': ONG.objects.get(nombre_ong= ong_responsable).id_ong,
+            'ong_responsable': User.objects.get(username= ong_responsable).id,
             'fecha_inicio': fecha_inicio,
             'fecha_fin': fecha_fin,
             'plan_economico': plan_economico,
@@ -112,12 +114,12 @@ def alta_proyecto(request):
             # Setear variable
             seteo = api.set_variable_by_case(case_id, "todas_etapas_cubiertas", False, "java.lang.Boolean")
             print(f"Variable seteada: {seteo}")
-            
+            id_back_ong = User.objects.get(username=ong_responsable).id
             payload = {
                     "id_back_proyecto": str(project.id), # Obtener el que da la BBDD
                     "nombre": nombre,
-                    "ong_responsable": ong_responsable,
-                    "id_back_ong": ONG.objects.get(nombre_ong= ong_responsable).id_ong,
+                    "ong_responsable": ong_responsable.first_name,
+                    "id_back_ong": str(id_back_ong),
                     "fecha_inicio": fecha_inicio,
                     "fecha_fin": fecha_fin,
                     "case_id": case_id,
@@ -155,15 +157,23 @@ def alta_proyecto(request):
         
         return redirect('home')
     
-@login_required
+#@login_required
 @csrf_exempt
 @require_GET
 def obtener_destinatarios(request):
     # Mail fijo, despues hacemos la busqueda
-    destinatarios = [
-        "francobasterrechea@mail.com",
-    ]
-    return JsonResponse(destinatarios, safe=False)
+    emails = list(User.objects.values_list('username', flat=True))
+    return JsonResponse(emails, safe=False)
+
+
+@csrf_exempt
+@require_POST
+def set_cloud_project_id(request):
+    # Mail fijo, despues hacemos la busqueda
+    cloud_id = request.POST.get('cloud_id')
+    project_id = request.POST.get('project_id')
+    Project.objects.get(project_id).cloud_id = cloud_id
+    return HttpResponse(status=200)
 
 @login_required
 def pedidos_view(request):
