@@ -9,7 +9,6 @@ class CompromisoSerializer(serializers.ModelSerializer):
         fields = [
             'id_ong_coolaboradora',
             'id_etapa_back',
-            'id', 
             'aporte', 
             'nombre_ong_coolaboradora',
             'cantidad',

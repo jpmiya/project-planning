@@ -64,7 +64,6 @@ def process_offers(project, seleccionadas, post_data, user=None):
                     'nombre_ong_coolaboradora': ong_coolaboradora.first_name,
                     'id_ong_coolaboradora': ong_coolaboradora.id,
                     'id_etapa_back': etapa_locked.id,
-                    'etapa_nombre': etapa_locked.nombre_aporte,
                     'aporte': aporte_text,
                     'cantidad': cantidad,
                     'fecha_compromiso': datetime.date.today,
