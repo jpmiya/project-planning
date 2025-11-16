@@ -29,11 +29,11 @@ def save_etapas(data, project) -> list:
             proyecto=project,
             nombre_etapa=nombre_etapa,  # La clave del diccionario es el nombre
             nombre_aporte=info_etapa['aporte'],
-            cant_aporte_necesario=info_etapa['cantidad'],
+            cant_aporte_necesario=int(info_etapa['cantidad']),
             cant_aporte_actual=0,
             fecha_inicio=info_etapa['inicio'],
             fecha_fin=info_etapa['fin'], 
-            requiere_ayuda=requiere_ayuda  # Convertir string a booleano
+            requiere_ayuda=bool(requiere_ayuda)  # Convertir string a booleano
         )
         
         etapas_creadas.append(etapa)

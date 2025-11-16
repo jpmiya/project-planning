@@ -71,11 +71,20 @@ def process_offers(project, seleccionadas, post_data, user=None):
                 })
 
         # Enviar las variables a Bonita
-        payload = json.dumps(aportes)
+        payload = {
+            "compromisos": aportes
+        }
         api = get_bonita_api("franco.colapinto", "Williams_Fw46")
-        ok = api.set_variable_by_case(case_id, 'compromisos', payload, 'java.lang.String')
-        if not ok:
-            # Forzar rollback
-            raise ProyectosServiceError('Ocurrió un error al enviar los compromisos a Bonita.')
+        activity = api.search_activity_by_case_id(case_id)
+        if activity:
+            print(f"Actividad encontrada: {activity}")
+            # Asigna la tarea a un usuario
+            bates = api.get_user_id_by_username("franco.colapinto")
+            api.assign_task(activity, bates)
+            # Intentar ejecutar la tarea
+            executed = api.execute_user_task(activity, payload)
+            print(f"Tarea ejecutada: {executed}")
+        else:
+            print("No se encontraron actividades pendientes (esto puede ser normal)")
 
     return {'aportes': aportes, 'case_id': case_id}

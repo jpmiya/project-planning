@@ -86,7 +86,7 @@ def alta_proyecto(request):
                 "cantidad": etapa.cant_aporte_necesario,
                 "fecha_inicio": etapa.fecha_inicio,
                 "fecha_fin": etapa.fecha_fin,
-                "id_proyecto_back": str(project.id)
+                "id_proyecto_back": project.id
             }
             for etapa in etapas
             if etapa.requiere_ayuda
@@ -114,27 +114,27 @@ def alta_proyecto(request):
             print(f"Case ID creado: {case_id}")
             
             # Setear variable
-            seteo = api.set_variable_by_case(case_id, "todas_etapas_cubiertas", False, "java.lang.Boolean")
-            print(f"Variable seteada: {seteo}")
+            #seteo = api.set_variable_by_case(case_id, "todas_etapas_cubiertas", False, "java.lang.Boolean")
+            #print(f"Variable seteada: {seteo}")
             id_back_ong = User.objects.get(username=ong_responsable).id
-            payload = {
-                    "id_back_proyecto": str(project.id), # Obtener el que da la BBDD
+            proyecto = {
+                    "id_back_proyecto": project.id, # Obtener el que da la BBDD
                     "nombre": nombre,
                     "ong_responsable": ong_responsable.first_name,
-                    "id_back_ong": str(id_back_ong),
+                    "id_back_ong": id_back_ong,
                     "fecha_inicio": fecha_inicio,
                     "fecha_fin": fecha_fin,
                     "case_id": case_id,
                     #"etapas": json.dumps(etapas_ayuda)
                 }
             
-            payload_json = json.dumps(payload)
+            # payload_json = json.dumps(payload)
             
-            seteo = api.set_variable_by_case(case_id, "proyecto_case", payload_json, "java.lang.String")
-            print(f"Variable seteada: {seteo}")
+            #seteo = api.set_variable_by_case(case_id, "proyecto_case", payload_json, "java.lang.String")
+            #print(f"Variable seteada: {seteo}")
             
-            seteo = api.set_variable_by_case(case_id, "etapas", json.dumps(etapas_ayuda), "java.lang.String")
-            print(f"Variable seteada: {seteo}")
+            #seteo = api.set_variable_by_case(case_id, "etapas", json.dumps(etapas_ayuda), "java.lang.String")
+            #print(f"Variable seteada: {seteo}")
             
             messages.info(request, f'Proceso Bonita iniciado con Case ID: {case_id}')
             
@@ -147,7 +147,11 @@ def alta_proyecto(request):
                 bates = api.get_user_id_by_username("franco.colapinto")
                 api.assign_task(activity, bates)
                 # Intentar ejecutar la tarea
-                executed = api.execute_user_task(activity, {})
+                payload = {
+                    "proyecto": proyecto,
+                    "etapas": etapas_ayuda
+                }
+                executed = api.execute_user_task(activity, payload)
                 print(f"Tarea ejecutada: {executed}")
             else:
                 print("No se encontraron actividades pendientes (esto puede ser normal)")
