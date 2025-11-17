@@ -61,12 +61,11 @@ def process_offers(project, seleccionadas, post_data, user=None):
                 ong_coolaboradora = User.objects.get(username=post_data.user)
                 
                 aportes.append({
-                    'nombre_ong_coolaboradora': ong_coolaboradora.first_name,
-                    'id_ong_coolaboradora': ong_coolaboradora.id,
-                    'id_etapa_back': etapa_locked.id,
+                    'ong_coolaboradora_id': ong_coolaboradora.id,
+                    'etapa_back_id': etapa_locked.id,
                     'aporte': aporte_text,
+                    'nombre_ong_coolaboradora': ong_coolaboradora.first_name,
                     'cantidad': cantidad,
-                    'fecha_compromiso': datetime.date.today,
                     'cumplido': False,
                 })
 

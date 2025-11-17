@@ -8,8 +8,8 @@ class ProyectoSerializer(serializers.ModelSerializer):
         fields = [
             'nombre', 
             'ong_responsable', 
-            'id_back_ong', 
-            'id', 
+            'ong_back_id', 
+            'proyecto_back_id', 
             'fecha_inicio', 
             'fecha_fin', 
             'case_id'

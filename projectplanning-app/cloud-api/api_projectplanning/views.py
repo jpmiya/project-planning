@@ -12,6 +12,8 @@ from api_projectplanning.serializers.etapa import EtapaSerializer
 from api_projectplanning.serializers.proyecto import ProyectoSerializer
 from api_projectplanning.serializers.compromiso import CompromisoSerializer, CumplidoSerializer
 from api_projectplanning.models.compromiso import Compromiso
+from api_projectplanning.models.proyecto import Project
+from api_projectplanning.models.etapa import Etapa
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from rest_framework.decorators import api_view
@@ -62,7 +64,7 @@ def authenticate_user(request):
         token = jwt.encode(payload, SECRET_KEY, algorithm='HS256')
 
         return JsonResponse({
-            'token': token,
+            'token': f'Bearer {token}',
             'user': {
                 'id': user.id,
                 'username': user.username,
@@ -91,46 +93,73 @@ def prueba(request):
         )
     ],
     request_body=openapi.Schema(
-        type=openapi.TYPE_OBJECT,
-        required=['nombre', 'aporte_necesario', 'cantidad', 'id_back_etapa', 'id_proyecto_back', 'fecha_inicio', 'fecha_fin', 'proyecto_cloud'],
-        properties={
-            'nombre': openapi.Schema(type=openapi.TYPE_STRING),
-            'aporte_necesario': openapi.Schema(type=openapi.TYPE_STRING),
-            'cantidad': openapi.Schema(type=openapi.TYPE_INTEGER),
-            'id_back_etapa': openapi.Schema(type=openapi.TYPE_STRING),
-            'id_proyecto_back': openapi.Schema(type=openapi.TYPE_STRING),
-            'fecha_inicio': openapi.Schema(type=openapi.TYPE_STRING, format="date"),
-            'fecha_fin': openapi.Schema(type=openapi.TYPE_STRING, format="date"),
-        }
+        type=openapi.TYPE_ARRAY,
+        items=openapi.Schema(      
+            type=openapi.TYPE_OBJECT,
+            required=[
+                'nombre',
+                'aporte_necesario',
+                'cantidad',
+                'etapa_back_id',
+                'proyecto_back',
+                'fecha_inicio',
+                'fecha_fin'
+            ],
+            properties={
+                'nombre': openapi.Schema(type=openapi.TYPE_STRING),
+                'aporte_necesario': openapi.Schema(type=openapi.TYPE_STRING),
+                'cantidad': openapi.Schema(type=openapi.TYPE_INTEGER),
+                'etapa_back_id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                'proyecto_back': openapi.Schema(type=openapi.TYPE_INTEGER),
+                'fecha_inicio': openapi.Schema(type=openapi.TYPE_STRING, format="date"),
+                'fecha_fin': openapi.Schema(type=openapi.TYPE_STRING, format="date"),
+            }
+        )
     ),
-    responses={201: "Etapa guardada", 400: "Datos inválidos"}
+    responses={201: "Etapas guardadas", 400: "Datos inválidos"}
 )
+
 @api_view(['POST'])
 @csrf_exempt
 @require_jwt
-def save_etapa(request):
-    try:
-        payload = json.loads(request.body)
-    except json.JSONDecodeError:
-        return JsonResponse({"error": "JSON inválido"}, status=400)
+def save_etapa(request): 
+    try: 
+        payload = json.loads(request.body) 
+    except json.JSONDecodeError: 
+        return JsonResponse({"error": "JSON inválido"}, status=400) 
     
-    serializer = EtapaSerializer(data=payload)
-    if serializer.is_valid():
-        etapa = serializer.save()
-        return JsonResponse({"id_etapa_cloud": etapa.id, "mensaje": "Etapa guardada"}, status=201)
-    else:
-        return JsonResponse(serializer.errors, status=400)
+    serializer = EtapaSerializer(data=payload, many=True)
+ 
+    try:
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return JsonResponse({"mensaje": "Etapas guardadas"}, status=201)
+    except Exception as e:
+        return JsonResponse({"errores": serializer.errors}, status=400)
+
     """
-    {
-        "nombre": "Plantación Inicial",
-        "aporte_necesario": "Arboles",
-        "cantidad": 100,
-        "id_back_etapa": "123",
-        "id_proyecto_back": "001", 
-        "fecha_inicio": "2025-10-21",
-        "fecha_fin": "2025-11-10",
-    }
+    [
+        {
+            "nombre": "Recolección de materiales",
+            "aporte_necesario": "Madera, clavos y pintura",
+            "cantidad": 50,
+            "etapa_back_id": 1,
+            "proyecto_back_id": 123,
+            "fecha_inicio": "2025-01-10",
+            "fecha_fin": "2025-02-15"
+        },
+        {
+            "nombre": "Construcción inicial",
+            "aporte_necesario": "Herramientas y mano de obra",
+            "cantidad": 20,
+            "etapa_back_id": 2,
+            "proyecto_back_id": 123,
+            "fecha_inicio": "2025-02-16",
+            "fecha_fin": "2025-03-10"
+        }
+    ]
     """
+
 
 
 @swagger_auto_schema(
@@ -160,15 +189,15 @@ def save_proyecto(request):
     
     serializer = ProyectoSerializer(data=payload)
     if serializer.is_valid():
-        proyecto = serializer.save()
-        return JsonResponse({"id_proyecto_cloud": proyecto.id, "mensaje": "Proyecto guardado"}, status=201)
+        serializer.save()
+        return JsonResponse({"mensaje": "Proyecto guardado"}, status=201)
     else:
         return JsonResponse(serializer.errors, status=400)
     """{
         "nombre": "Plan de Reforestación",
         "ong_responsable": "EcoVida",
-        "id_back_ong": "123",
-        "id_back_proyecto": "123",
+        "ong_back_id": "123",
+        "proyecto_back_id": "123",
         "fecha_inicio": "2025-10-20",
         "fecha_fin": "2025-12-31",
         "case_id": "123"
@@ -188,12 +217,18 @@ def save_proyecto(request):
     ],
     request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
-        required=['etapa_cloud', 'nombre_ong_coolaboradora', 'id_ong_coolaboradora', 'id_etapa_back', 'aporte', 'cantidad'],
+        required=[
+            'ong_coolaboradora_id',
+            'etapa_back_id',
+            'aporte',
+            'nombre_ong_coolaboradora',
+            'cantidad'
+        ],
         properties={
-            'nombre_ong_coolaboradora': openapi.Schema(type=openapi.TYPE_STRING),
-            'id_ong_coolaboradora': openapi.Schema(type=openapi.TYPE_STRING),
-            'id_etapa_back': openapi.Schema(type=openapi.TYPE_STRING),
+            'ong_coolaboradora_id': openapi.Schema(type=openapi.TYPE_STRING),
+            'etapa_back_id': openapi.Schema(type=openapi.TYPE_STRING),
             'aporte': openapi.Schema(type=openapi.TYPE_STRING),
+            'nombre_ong_coolaboradora': openapi.Schema(type=openapi.TYPE_STRING),
             'cantidad': openapi.Schema(type=openapi.TYPE_INTEGER),
             'cumplido': openapi.Schema(type=openapi.TYPE_BOOLEAN),
         }
@@ -208,24 +243,52 @@ def save_compromiso(request):
         payload = json.loads(request.body)
     except json.JSONDecodeError:
         return JsonResponse({"error": "JSON inválido"}, status=400)
+
+    serializer = CompromisoSerializer(
+        data=payload,
+        many=isinstance(payload, list)
+    )
     
-    serializer = CompromisoSerializer(data=payload)
-    if serializer.is_valid():
+    try:
+        serializer.is_valid(raise_exception=True)
         # Habra que verificar aca que el compromiso no es necesario? Es decir, si preciso 40 voluntarios
         # por ejemplo, y ya lo tengo, y me llega otro compromiso, debería bocharlo o ya se controla desde el back?
-        compromiso = serializer.save()
-        return JsonResponse({"id_compromiso_cloud": compromiso.id, "mensaje": "Compromiso guardado"}, status=201)
-    else:
-        return JsonResponse(serializer.errors, status=400)
+        compromisos = serializer.save()
+
+        # Si son varios compromisos, devolvés una lista
+        if isinstance(compromisos, list):
+            respuesta = [
+                {"compromiso_id": c.id, "mensaje": "Compromiso guardado"}
+                for c in compromisos
+            ]
+            return JsonResponse(respuesta, safe=False, status=201)
+
+        return JsonResponse(
+            {"compromiso_id": compromisos.id},
+            status=201
+        )
+
+    except Exception:
+        return JsonResponse({"errores": serializer.errors}, status=400)
     """
-    {
-        "nombre_ong_coolaboradora": "Fundación Manos Verdes",
-        "id_ong_coolaboradora": "345",
-        "id_etapa_back": "12",
-        "aporte": "Voluntariado",
-        "cantidad": 10,
-        "cumplido": false
-    }
+    [
+        {
+            "ong_coolaboradora_id": 4,
+            "etapa_back_id": 1,
+            "aporte": "Herramientas",
+            "nombre_ong_coolaboradora": "Fundación X",
+            "cantidad": 10,
+            "cumplido": false
+        },
+        {
+            "ong_coolaboradora_id": 4,
+            "etapa_back_id": 1,
+            "aporte": "Mano de Obra",
+            "nombre_ong_coolaboradora": "Fundación X",
+            "cantidad": 10,
+            "cumplido": false
+        }
+    ]
     """
     
 
@@ -291,7 +354,7 @@ def mark_cumplido_fulfilled(request):
             required=True
         ),
         openapi.Parameter(
-            'id_proyecto_back',
+            'proyecto_back_id',
             openapi.IN_QUERY,
             description="ID del proyecto en el backend",
             type=openapi.TYPE_STRING,
@@ -300,7 +363,7 @@ def mark_cumplido_fulfilled(request):
     ],
     responses={
         200: openapi.Response(description="Lista de compromisos"),
-        400: "id_proyecto_back faltante",
+        400: "proyecto_back_id faltante",
         401: "No autorizado"
     }
 )
@@ -308,14 +371,13 @@ def mark_cumplido_fulfilled(request):
 @csrf_exempt
 @require_jwt
 def get_commitments_by_project_id(request):
-    id_proyecto_back = request.GET.get('id_proyecto_back')
-
-    if not id_proyecto_back:
-        return JsonResponse({"error": "Falta id_proyecto_back"}, status=400)
+    proyecto_back_id = request.GET.get('proyecto_back_id')
+    if not proyecto_back_id:
+        return JsonResponse({"error": "Falta proyecto_back_id"}, status=400)
 
     try:
         compromisos = Compromiso.objects.filter(
-            etapa_cloud__proyecto_cloud__id_back_proyecto=id_proyecto_back
+            etapa_back__proyecto_back__proyecto_back_id=proyecto_back_id
         )
 
         if not compromisos.exists():
@@ -349,3 +411,4 @@ def get_commitments_by_project_id(request):
     "id_proyecto_back": "1"
     }
     """
+    

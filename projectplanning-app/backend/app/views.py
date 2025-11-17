@@ -80,13 +80,13 @@ def alta_proyecto(request):
         
         etapas_ayuda = [
             {
-                "id_back_etapa": etapa.id,
                 "nombre": etapa.nombre_etapa,
                 "aporte_necesario": etapa.nombre_aporte,
                 "cantidad": etapa.cant_aporte_necesario,
+                "etapa_back_id": etapa.id,
+                "proyecto_back_id": project.id,
                 "fecha_inicio": etapa.fecha_inicio,
                 "fecha_fin": etapa.fecha_fin,
-                "id_proyecto_back": project.id
             }
             for etapa in etapas
             if etapa.requiere_ayuda
@@ -118,10 +118,10 @@ def alta_proyecto(request):
             #print(f"Variable seteada: {seteo}")
             id_back_ong = User.objects.get(username=ong_responsable).id
             proyecto = {
-                    "id_back_proyecto": project.id, # Obtener el que da la BBDD
                     "nombre": nombre,
                     "ong_responsable": ong_responsable.first_name,
-                    "id_back_ong": id_back_ong,
+                    "ong_back_id": id_back_ong,
+                    "proyecto_back_id": project.id, # Obtener el que da la BBDD
                     "fecha_inicio": fecha_inicio,
                     "fecha_fin": fecha_fin,
                     "case_id": case_id,
