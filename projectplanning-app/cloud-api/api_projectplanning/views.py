@@ -258,7 +258,7 @@ def save_compromiso(request):
         # Si son varios compromisos, devolvés una lista
         if isinstance(compromisos, list):
             respuesta = [
-                {"compromiso_id": c.id, "mensaje": "Compromiso guardado"}
+                {"compromiso_id": c.id, "etapa_id": c.etapa_back.etapa_back_id, "mensaje": "Compromiso guardado"}
                 for c in compromisos
             ]
             return JsonResponse(respuesta, safe=False, status=201)
