@@ -27,10 +27,11 @@ urlpatterns = [
     path('proyecto/<int:project_id>/etapas/', views.ver_etapas, name='ver_etapas'),
     path('mis_proyectos/', views.projects_view, name='mis_proyectos'),
     path('mis_proyectos/<int:project_id>/compromisos/', views.project_compromises, name='project_compromises'),
+    path('observacion/<int:observacion_id>/resolver/', views.resolver_observacion, name='resolver_observacion'),
     path('register/', views.register, name='register'),
     path('login/', views.custom_login_view, name='login'),
     path('logout/', views.custom_logout_view, name='logout'),
-    path('gerente', views.gerente_view, name='gerente'),
+    path('proyectos_ejecucion/', views.proyectos_ejecucion_view, name='proyectos_ejecucion'),
     #path('api/obtener_etapas_proyecto/<int:id_proyecto>/', views.obtener_etapas_proyecto, name='obtener_etapas_proyecto'),
     #path('api/obtener_proyecto/<int:id_proyecto>/', views.obtener_proyecto, name='obtener_proyecto'),
 ]

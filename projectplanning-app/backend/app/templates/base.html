@@ -27,7 +27,7 @@
             {% for g in request.user.groups.all %}
               {% if g.name == 'Gerente' %}
                 <li class="nav-item">
-                  <a class="nav-link btn btn-sm btn-outline-primary ms-2" href="{% url 'gerente' %}">Gerente</a>
+                  <a class="nav-link btn btn-sm btn-outline-primary ms-2" href="{% url 'proyectos_ejecucion' %}">Proyectos en ejecución</a>
                 </li>
               {% endif %}
             {% endfor %}

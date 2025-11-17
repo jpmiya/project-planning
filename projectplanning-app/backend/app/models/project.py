@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 class Project(models.Model):
     nombre = models.CharField(max_length=255)
@@ -7,6 +8,14 @@ class Project(models.Model):
     fecha_fin = models.DateField()
     plan_economico = models.TextField()
     case_id = models.IntegerField(null=True, blank=True) # Clave en bonita del caso de proceso
+    
+    # ONGs colaboradoras que aportaron/ayudaron en este proyecto
+    ongs_colaboradoras = models.ManyToManyField(
+        User,
+        related_name='proyectos_colaborados',
+        blank=True,
+        help_text='ONGs que han colaborado/aportado en este proyecto'
+    )
     
     # Estado del proyecto: Pendiente | En ejecucion | Finalizado
     ESTADO_PENDIENTE = 'Pendiente'

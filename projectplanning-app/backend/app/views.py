@@ -15,6 +15,7 @@ from django.views.decorators.csrf import csrf_exempt
 from app.models.project import Project
 from app.models.etapa import Etapa
 from app.models.ong import ONG
+from app.models.observation import Observation
 from app.services.proyectos import process_offers, ProyectosServiceError
 from app.forms import RegistrationForm
 from django.contrib.auth.forms import AuthenticationForm
@@ -242,41 +243,84 @@ def custom_logout_view(request):
     return redirect('login')
 
 @role_required('Gerente')
-def gerente_view(request):
-    """Vista para acciones de gerente. Si se pasa ?project=<id> muestra el proyecto seleccionado."""
-    project_id = request.GET.get('project')
-    proyecto = None
-    if project_id:
-        try:
-            proyecto = get_object_or_404(Project, pk=int(project_id))
-        except Exception:
-            proyecto = None
-
-    # Por ahora renderizamos la plantilla con el proyecto (o None)
-    return render(request, 'gerente.html', {'proyecto': proyecto})
+def proyectos_ejecucion_view(request):
+    """Vista para gerente: muestra proyectos en ejecución y permite agregar observaciones.
+    
+    GET: Lista todos los proyectos con estado 'En ejecucion'
+    POST: Agrega una observación a un proyecto específico (recibe project_id en el form)
+    """
+    # POST: crear nueva observación para un proyecto
+    if request.method == 'POST':
+        project_id = request.POST.get('project_id')
+        observacion_text = request.POST.get('observacion', '').strip()
+        
+        if project_id and observacion_text:
+            try:
+                proyecto = get_object_or_404(Project, pk=int(project_id))
+                # Crear la observación asociada al proyecto
+                Observation.objects.create(
+                    text=observacion_text,
+                    id_project=proyecto
+                )
+                messages.success(request, f'Observación agregada exitosamente al proyecto "{proyecto.nombre}".')
+            except Exception as e:
+                messages.error(request, f'Error al crear observación: {e}')
+        else:
+            messages.warning(request, 'Debe proporcionar el proyecto y el texto de la observación.')
+        
+        return redirect('proyectos_ejecucion')
+    
+    # GET: cargar todos los proyectos en ejecución
+    proyectos = Project.objects.filter(estado=Project.ESTADO_EN_EJECUCION).prefetch_related('etapas')
+    
+    return render(request, 'proyectos_ejecucion.html', {'proyectos': proyectos})
 
 
 @login_required
 def projects_view(request):
-    """Listado 'Mis Proyectos' — proyectos creados por el usuario actual.
+    """Listado 'Mis Proyectos' — proyectos creados por el usuario actual o en los que colaboró.
 
-    Se determina pertenencia comparando `Project.ong_responsable` con
-    `request.user.profile.full_name` o `request.user.first_name` para mantener
-    compatibilidad con datos existentes.
+    Muestra:
+    - Proyectos donde el usuario es originante (ong_responsable == user.id)
+    - Proyectos donde el usuario es colaborador (en ongs_colaboradoras)
     """
     user = request.user
-    # The project.ong_responsable field stores the creating user's id (as string or int).
     owner_id_str = str(user.id)
 
-    proyectos = Project.objects.filter(ong_responsable__in=[owner_id_str]).prefetch_related('etapas')
+    # Proyectos originados por el usuario
+    proyectos_originados = Project.objects.filter(
+        ong_responsable__in=[owner_id_str]
+    ).prefetch_related('etapas', 'observation_set')
+    
+    # Proyectos en los que colaboró
+    proyectos_colaborados = Project.objects.filter(
+        ongs_colaboradoras=user
+    ).prefetch_related('etapas', 'observation_set')
+    
+    # Combinar ambos sets y marcar el rol del usuario en cada proyecto
+    proyectos_data = []
+    
+    for p in proyectos_originados:
+        proyectos_data.append({
+            'proyecto': p,
+            'es_originante': True,
+        })
+    
+    for p in proyectos_colaborados:
+        # Evitar duplicados (si está en ambos)
+        if str(p.ong_responsable) != owner_id_str:
+            proyectos_data.append({
+                'proyecto': p,
+                'es_originante': False,
+            })
 
-    return render(request, 'mis_proyectos.html', {'proyectos': proyectos})
+    return render(request, 'mis_proyectos.html', {'proyectos_data': proyectos_data})
 
 
 @login_required
 def project_compromises(request, project_id):
     """Muestra los compromisos externos de un proyecto (GET) y permite
-    marcar el proyecto como Finalizado (POST).
+    marcar el proyecto como En Ejecucion (POST).
 
     El acceso está limitado: solo el usuario que creó el proyecto puede
     ver/editar su estado (comparando `ong_responsable` con el nombre del usuario).
@@ -291,7 +335,9 @@ def project_compromises(request, project_id):
 
     # POST: marcar como finalizado
     if request.method == 'POST':
-        proyecto.estado = Project.ESTADO_FINALIZADO if hasattr(Project, 'ESTADO_FINALIZADO') else 'Finalizado'
+
+        #aca hay que controlar que esten todos los compromisos cumplidos antes de pasar a ejecución
+        proyecto.estado = Project.ESTADO_EN_EJECUCION if hasattr(Project, 'ESTADO_EN_EJECUCION') else 'En ejecucion'
         proyecto.save()
         messages.success(request, 'Proyecto marcado como Finalizado.')
         return redirect('mis_proyectos')
@@ -311,3 +357,32 @@ def project_compromises(request, project_id):
         'proyecto': proyecto,
         'commitments': commitments,
     })
+
+
+@login_required
+def resolver_observacion(request, observacion_id):
+    """Marca una observación como 'Resuelto'.
+    
+    Solo el dueño del proyecto puede marcar observaciones como resueltas.
+    """
+    if request.method != 'POST':
+        messages.error(request, 'Método no permitido.')
+        return redirect('mis_proyectos')
+    
+    observacion = get_object_or_404(Observation, pk=observacion_id)
+    proyecto = observacion.id_project
+    
+    # Verificar ownership
+    user = request.user
+    owner_id_str = str(user.id)
+    
+    if str(proyecto.ong_responsable) != owner_id_str:
+        messages.error(request, 'No tienes permisos para modificar esta observación.')
+        return redirect('mis_proyectos')
+    
+    # Marcar como resuelto
+    observacion.estado = Observation.ESTADO_RESUELTO
+    observacion.save()
+    
+    messages.success(request, f'Observación marcada como resuelta.')
+    return redirect('mis_proyectos')

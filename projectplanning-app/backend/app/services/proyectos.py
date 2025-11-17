@@ -35,6 +35,15 @@ def process_offers(project, seleccionadas, post_data, user=None):
 
     # Usamos una transacción para asegurar consistencia en decrementos
     with transaction.atomic():
+        # Agregar al usuario como colaborador si aún no lo es
+        if user and user.is_authenticated:
+            # Verificar que no sea el originante
+            owner_id_str = str(project.ong_responsable)
+            if str(user.id) != owner_id_str:
+                # Agregar como colaborador si no está ya
+                if not project.ongs_colaboradoras.filter(id=user.id).exists():
+                    project.ongs_colaboradoras.add(user)
+        
         for etapa in project.etapas.all():
             eid = str(etapa.id)
             if eid in seleccionadas:
