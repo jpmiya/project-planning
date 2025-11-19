@@ -8,7 +8,7 @@ import requests
 from app.decorators import role_required
 from app.controllers.projects import save_project, save_etapas
 from app.api.bonita import get_bonita_api 
-from app.utils import procesar_etapas, obtain_cloud_token, fetch_commitments_from_cloud
+from app.utils import procesar_etapas, obtain_cloud_token, fetch_commitments_from_cloud, verificar_etapas, verificar_proyecto
 import time, json
 from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt
@@ -81,6 +81,19 @@ def alta_proyecto(request):
             'plan_economico': plan_economico,
             'etapas': etapas
         }
+         # Validaciones
+        errores_proyecto = verificar_proyecto(data)
+        errores_etapas = verificar_etapas(data)
+
+        # Si hay errores, NO se guarda y NO se redirige
+        if errores_proyecto or errores_etapas:
+            contexto = {
+                "errores_proyecto": errores_proyecto,
+                "errores_etapas": errores_etapas,
+                "valores": data,
+            }
+            return render(request, "alta_proyecto.html", contexto)
+        
         project = save_project(data)
         etapas = save_etapas(data, project)
         messages.success(request, 'Proyecto creado exitosamente.')

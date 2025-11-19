@@ -5,6 +5,23 @@
 {% block content %}
   <h1 class="mb-4">Alta de Proyecto</h1>
 
+  {% if errores_proyecto %}
+    <div class="alert alert-danger">
+        {{ errores_proyecto }}
+    </div>
+  {% endif %}
+
+  {% if errores_etapas %}
+    <div class="alert alert-danger">
+        <ul>
+        {% for error in errores_etapas %}
+            <li>{{ error }}</li>
+        {% endfor %}
+        </ul>
+    </div>
+  {% endif %}
+
+
   <form method="post" action="{% url 'alta_proyecto' %}">
     {% csrf_token %}
     <!-- Nombre -->
@@ -172,4 +189,52 @@
   // Inicializar los campos ocultos al cargar la página
   updateHiddenFields();
 </script>
+
+<script>
+document.querySelector('form').addEventListener('submit', function(e) {
+    let errores = [];
+
+    // Obtengo fechas del proyecto
+    const inicioProyecto = new Date(document.getElementById('fecha_inicio').value);
+    const finProyecto = new Date(document.getElementById('fecha_fin').value);
+
+    // Validación proyecto
+    if (inicioProyecto > finProyecto) {
+        errores.push("La fecha de inicio del proyecto debe ser anterior a la fecha de fin");
+    }
+
+    // Validación etapas
+    const etapas = document.querySelectorAll('.etapa');
+    etapas.forEach(etapa => {
+        const nombre = etapa.querySelector('.etapa-nombre').value.trim();
+        const inicioEtapa = new Date(etapa.querySelector('.etapa-inicio').value);
+        const finEtapa = new Date(etapa.querySelector('.etapa-fin').value);
+        const cantidad = parseInt(etapa.querySelector('.cant-aporte').value);
+
+        if (!nombre) return;  // Evitar basura si la etapa está vacía
+
+        if (inicioEtapa > finEtapa) {
+            errores.push(`La fecha de inicio de la etapa "${nombre}" es posterior a su fecha de fin.`);
+        }
+        if (inicioEtapa < inicioProyecto) {
+            errores.push(`La etapa "${nombre}" inicia antes que el proyecto.`);
+        }
+        if (finEtapa > finProyecto) {
+            errores.push(`La etapa "${nombre}" finaliza después del proyecto.`);
+        }
+        if (cantidad <= 0) {
+            errores.push(`La cantidad del aporte de la etapa "${nombre}" debe ser mayor a 0.`);
+        }
+    });
+
+    // Si hay errores, detengo el submit
+    if (errores.length > 0) {
+        e.preventDefault();
+
+        alert(errores.join("\n"));  
+        // Aquí podrías mostrarlo también en un div si querés algo más estético
+    }
+});
+</script>
+
 {% endblock %}

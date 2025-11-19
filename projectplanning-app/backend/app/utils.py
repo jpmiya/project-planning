@@ -1,3 +1,5 @@
+from datetime import datetime
+
 def procesar_etapas(request):
     etapas_dict = {}
     
@@ -14,6 +16,53 @@ def procesar_etapas(request):
                 etapas_dict[nombre_etapa][campo] = value
     
     return etapas_dict
+
+
+def verificar_etapas(data):
+    mensajes = []
+    for nombre_etapa, info_etapa in data['etapas'].items():
+        inicio_etapa = datetime.strptime(info_etapa["inicio"], "%Y-%m-%d").date()
+        fin_etapa = datetime.strptime(info_etapa["fin"], "%Y-%m-%d").date()
+        inicio_proyecto = datetime.strptime(data["fecha_inicio"], "%Y-%m-%d").date()
+        fin_proyecto = datetime.strptime(data["fecha_fin"], "%Y-%m-%d").date()
+        
+        if inicio_etapa > fin_etapa:
+            mensajes.append(f"La fecha de inicio de la Etapa {nombre_etapa} es superior a la fecha de fin de la misma Etapa")
+        
+        if inicio_etapa < inicio_proyecto:
+            mensajes.append(f"La fecha de inicio de la Etapa {nombre_etapa} es anterior a la fecha de inicio del Proyecto")
+        
+        if fin_etapa > fin_proyecto:
+            mensajes.append(f"La fecha de fin de la Etapa {nombre_etapa} es superior a la fecha de fin del Proyecto")
+        
+        if int(info_etapa['cantidad']) == 0:
+            mensajes.append(f"La cantidad del aporte {int(info_etapa['cantidad'])} para la Etapa {nombre_etapa} debe ser mayor a 0")
+
+    return mensajes
+    
+    """
+    nombre_etapa = models.CharField(max_length=255)
+    nombre_aporte = models.CharField(max_length=255)
+    cant_aporte_necesario = models.IntegerField()
+    cant_aporte_actual = models.IntegerField()
+    fecha_inicio = models.DateField()
+    fecha_fin = models.DateField()
+    requiere_ayuda = models.BooleanField(default=False)
+    proyecto = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name='etapas'
+    )
+    """
+
+def verificar_proyecto(proyecto):
+    inicio_proyecto = datetime.strptime(proyecto["fecha_inicio"], "%Y-%m-%d").date()
+    fin_proyecto = datetime.strptime(proyecto["fecha_fin"], "%Y-%m-%d").date()
+    
+    if inicio_proyecto > fin_proyecto:
+        return f"La fecha de inicio del proyecto debe ser anterior a la de fin del mismo proyecto"
+    else:
+        return None
 
 
 def obtain_cloud_token(force_refresh: bool = False) -> str:

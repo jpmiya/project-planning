@@ -4,6 +4,7 @@ from app.api.bonita import get_bonita_api
 from app.models.etapa import Etapa
 from django.contrib.auth.models import User
 import datetime
+from django.db.models import F
 
 
 class ProyectosServiceError(Exception):
@@ -78,9 +79,14 @@ def process_offers(project, seleccionadas, post_data, user=None):
                     'cumplido': False,
                 })
 
+        # Chequeo de todas las etapas cubiertas
+        etapas_proyecto = Etapa.objects.filter(proyecto__case_id=case_id, requiere_ayuda=True)
+        todas_etapas_cubiertas = not etapas_proyecto.exclude(cant_aporte_actual__gte=F('cant_aporte_necesario')).exists()
+        
         # Enviar las variables a Bonita
         payload = {
-            "compromisos": aportes
+            "compromisos": aportes,
+            "plan_trabajo_completo": todas_etapas_cubiertas
         }
         api = get_bonita_api("franco.colapinto", "Williams_Fw46")
         activity = api.search_activity_by_case_id(case_id)
