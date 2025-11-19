@@ -22,6 +22,9 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import login as auth_login, logout as auth_logout
 from django.contrib.auth.models import User
 from django.http import HttpResponse
+from django.utils import timezone
+from django.db import models
+from datetime import timedelta
 
 
 # Create your views here.
@@ -43,6 +46,9 @@ def register(request):
             messages.success(request, f'Usuario {user.username} creado exitosamente. Ya estás conectado.')
             # Iniciar sesión automáticamente
             auth_login(request, user)
+            # Actualizar last_login manualmente
+            user.last_login = timezone.now()
+            user.save(update_fields=['last_login'])
             return redirect('home')
         else:
             messages.error(request, 'Por favor corrige los errores en el formulario.')
@@ -185,7 +191,7 @@ def set_cloud_project_id(request):
 @login_required
 def pedidos_view(request):
     """Muestra un listado de proyectos (pedidos) con botón para ver etapas."""
-    proyectos = Project.objects.all().prefetch_related('etapas')
+    proyectos = Project.objects.filter(estado='Pendiente').prefetch_related('etapas')
     return render(request, 'pedidos.html', {'proyectos': proyectos})
 
 @login_required
@@ -225,6 +231,9 @@ def custom_login_view(request):
         if form.is_valid():
             user = form.get_user()
             auth_login(request, user)
+            # Actualizar last_login manualmente
+            user.last_login = timezone.now()
+            user.save(update_fields=['last_login'])
             messages.success(request, f'¡Bienvenido {user.profile.full_name}!')
             next_url = request.GET.get('next', 'home')
             return redirect(next_url)
@@ -386,3 +395,138 @@ def resolver_observacion(request, observacion_id):
     
     messages.success(request, f'Observación marcada como resuelta.')
     return redirect('mis_proyectos')
+
+
+@login_required
+@role_required('Gerente')
+def tablero_gerencial_view(request):
+    """Tablero gerencial para Gerente: integra datos de BD local + Bonita BPM.
+    
+    Consulta 1: Proyectos abiertos con estado en Bonita
+    Consulta 2: Etapas registradas + tareas humanas pendientes
+    Consulta 3: KPIs de carga global del sistema
+    """
+    # Obtener proyectos de BD local
+    proyectos_bd = Project.objects.all()
+    
+    # Inicializar estructura para consulta 1
+    proyectos_con_bonita = []
+    
+    # Inicializar estructura para consulta 2
+    etapas_con_tareas = []
+    
+    # Inicializar estructura para consulta 3 (KPIs)
+    kpis = {
+        'total_proyectos': proyectos_bd.count(),
+        'procesos_bonita_activos': 0,
+        'usuarios_activos_mes': 0,
+        'compromisos_pendientes': 0,
+    }
+    
+    # Calcular KPIs de BD (independientes de Bonita)
+    # KPI 3: Usuarios activos en el mes
+    fecha_mes_atras = timezone.now() - timedelta(days=30)
+    usuarios_activos = User.objects.filter(last_login__gte=fecha_mes_atras)
+    kpis['usuarios_activos_mes'] = usuarios_activos.count()
+    
+    # Debug: Ver todos los usuarios con last_login
+    print(f"DEBUG KPI - Fecha mes atrás: {fecha_mes_atras}")
+    print(f"DEBUG KPI - Total usuarios: {User.objects.count()}")
+    for u in User.objects.all():
+        print(f"DEBUG KPI - Usuario: {u.username}, last_login: {u.last_login}")
+    
+    # KPI 4: Compromisos pendientes
+    etapas_pendientes = Etapa.objects.filter(
+        requiere_ayuda=True,
+        cant_aporte_actual__lt=models.F('cant_aporte_necesario')
+    )
+    kpis['compromisos_pendientes'] = etapas_pendientes.count()
+    
+    # Conectar con Bonita
+    print("DEBUG: Iniciando conexión con Bonita")
+    try:
+        api = get_bonita_api("franco.colapinto", "Williams_Fw46")
+        print(f"DEBUG: Bonita authenticated: {api.authenticated}")
+        
+        if api.authenticated:
+            # Consulta 1: Obtener casos activos de Bonita
+            casos_bonita = api.get_active_cases()
+            casos_map = {caso.get('id'): caso for caso in casos_bonita}
+            
+            # Integrar proyectos BD con casos Bonita
+            for proyecto in proyectos_bd:
+                caso_bonita = None
+                estado_bonita = 'N/A'
+                
+                if proyecto.case_id and proyecto.case_id in casos_map:
+                    caso_bonita = casos_map[proyecto.case_id]
+                    estado_bonita = caso_bonita.get('state', 'desconocido')
+                
+                proyectos_con_bonita.append({
+                    'id': proyecto.id,
+                    'nombre': proyecto.nombre,
+                    'ong_responsable': proyecto.ong_responsable,
+                    'estado_bd': proyecto.estado,
+                    'fecha_inicio': proyecto.fecha_inicio,
+                    'fecha_fin': proyecto.fecha_fin,
+                    'case_id': proyecto.case_id,
+                    'estado_bonita': estado_bonita,
+                })
+            
+            # Consulta 2: Obtener todas las etapas de BD
+            etapas_bd = Etapa.objects.select_related('proyecto').all()
+            
+            # Obtener tareas pendientes de Bonita
+            tareas_bonita = api.get_pending_human_tasks()
+            
+            # Crear mapa de tareas por rootContainerId (case_id)
+            tareas_por_caso = {}
+            for tarea in tareas_bonita:
+                case_id = tarea.get('rootContainerId')
+                if case_id not in tareas_por_caso:
+                    tareas_por_caso[case_id] = []
+                tareas_por_caso[case_id].append(tarea)
+            
+            # Integrar etapas BD con tareas Bonita
+            for etapa in etapas_bd:
+                proyecto = etapa.proyecto
+                tareas_pendientes = []
+                
+                if proyecto.case_id:
+                    tareas_pendientes = tareas_por_caso.get(proyecto.case_id, [])
+                
+                etapas_con_tareas.append({
+                    'id': etapa.id,
+                    'proyecto_nombre': proyecto.nombre,
+                    'nombre_etapa': etapa.nombre_etapa,
+                    'nombre_aporte': etapa.nombre_aporte,
+                    'cant_necesario': etapa.cant_aporte_necesario,
+                    'cant_actual': etapa.cant_aporte_actual,
+                    'requiere_ayuda': etapa.requiere_ayuda,
+                    'tareas_pendientes': len(tareas_pendientes),
+                    'tareas_detalle': [
+                        {
+                            'nombre': t.get('name', 'Sin nombre'),
+                            'id': t.get('id'),
+                            'estado': t.get('state', 'N/A'),
+                        }
+                        for t in tareas_pendientes
+                    ],
+                })
+            
+            # KPI 2: Procesos Bonita activos (casos activos)
+            kpis['procesos_bonita_activos'] = len(casos_bonita)
+            
+        else:
+            print("DEBUG: No se pudo autenticar con Bonita")
+            messages.warning(request, 'No se pudo autenticar con Bonita BPM.')
+    
+    except Exception as e:
+        print(f"DEBUG: Error al conectar con Bonita: {str(e)}")
+        messages.error(request, f'Error al conectar con Bonita: {str(e)}')
+    
+    return render(request, 'tablero_gerencial.html', {
+        'proyectos': proyectos_con_bonita,
+        'etapas': etapas_con_tareas,
+        'kpis': kpis,
+    })

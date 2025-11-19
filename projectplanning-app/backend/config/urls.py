@@ -32,6 +32,7 @@ urlpatterns = [
     path('login/', views.custom_login_view, name='login'),
     path('logout/', views.custom_logout_view, name='logout'),
     path('proyectos_ejecucion/', views.proyectos_ejecucion_view, name='proyectos_ejecucion'),
+    path('tablero_gerencial/', views.tablero_gerencial_view, name='tablero_gerencial'),
     #path('api/obtener_etapas_proyecto/<int:id_proyecto>/', views.obtener_etapas_proyecto, name='obtener_etapas_proyecto'),
     #path('api/obtener_proyecto/<int:id_proyecto>/', views.obtener_proyecto, name='obtener_proyecto'),
 ]

@@ -246,6 +246,17 @@ class BonitaAPI:
         else:
             return None
 
+    def get_active_cases(self):
+        """Gets all active cases (open processes) from Bonita"""
+        response = self.do_request("GET", "/API/bpm/case?p=0&c=100&d=processDefinitionId&d=started_by&d=startedBySubstitute")
+        return response if response else []
+    
+    
+    def get_pending_human_tasks(self):
+        """Gets all pending human tasks with state=ready"""
+        response = self.do_request("GET", "/API/bpm/humanTask?p=0&c=100&f=state=ready&d=processId&d=assigned_id&d=rootContainerId")
+        return response if response else []
+
         
 # Patron Singleton, en cada controlador llamo a esta función y me da una instancia de la api.
 def get_bonita_api(user: str, password: str) -> BonitaAPI:

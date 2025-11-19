@@ -3,9 +3,9 @@ from django.db import models
 class Observation (models.Model):
     text = models.CharField(max_length=500)
     id_project = models.ForeignKey('Project', on_delete=models.CASCADE)
+    
     ESTADO_PENDIENTE = 'Pendiente'
     ESTADO_RESUELTO = 'Resuelto'
-
     ESTADO_CHOICES = [
         (ESTADO_PENDIENTE, 'Pendiente'),
         (ESTADO_RESUELTO, 'Resuelto'),
