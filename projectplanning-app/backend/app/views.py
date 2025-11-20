@@ -132,6 +132,9 @@ def alta_proyecto(request):
                 return redirect('home')
             
             print(f"Case ID creado: {case_id}")
+            project.case_id = case_id
+            project.save()
+            print(f"Case Id en proyecto: {project.case_id}")
             
             # Setear variable
             #seteo = api.set_variable_by_case(case_id, "todas_etapas_cubiertas", False, "java.lang.Boolean")
@@ -379,7 +382,7 @@ def project_compromises(request, project_id):
 
     return render(request, 'compromisos.html', {
         'proyecto': proyecto,
-        'commitments': commitments,
+        'commitments': commitments["compromisos"],
     })
 
 

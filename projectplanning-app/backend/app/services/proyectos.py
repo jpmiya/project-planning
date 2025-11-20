@@ -54,38 +54,48 @@ def process_offers(project, seleccionadas, post_data, user=None):
 
                 aporte_text =  etapa.nombre_aporte #post_data.get(f'aporte_{eid}', '').strip()
                 cantidad_raw = post_data.get(f'cantidad_{eid}', '').strip()
+                
+                print("Obtuve los valores del request")
 
                 try:
                     cantidad = int(cantidad_raw) if cantidad_raw != '' else None
                 except (ValueError, TypeError):
                     raise ProyectosServiceError(f'Cantidad inválida para la etapa "{etapa.nombre_aporte}".')
 
+                print("Pase el try de cantidad invalida")
+                
                 if cantidad is None or cantidad <= 0:
                     raise ProyectosServiceError(f'Debe indicar una cantidad válida para la etapa "{etapa.nombre_aporte}".')
 
                 etapa_locked = Etapa.objects.select_for_update().get(pk=etapa.id)
                 if cantidad + etapa_locked.cant_aporte_actual > etapa_locked.cant_aporte_necesario:
-                    raise ProyectosServiceError(f'La cantidad solicitada para "{etapa.nombre_aporte}" excede la necesaria ({etapa_locked.cant_aporte_necesario}).')
-
+                    raise ProyectosServiceError(f'La cantidad solicitada para "{etapa.nombre_aporte}" excede la necesaria ({etapa_locked.cant_aporte_necesario}).')  
+               
                 etapa_locked.cant_aporte_actual =etapa_locked.cant_aporte_actual + cantidad
                 etapa_locked.save()
-                ong_coolaboradora = User.objects.get(username=post_data.user)
                 
                 aportes.append({
-                    'ong_coolaboradora_id': ong_coolaboradora.id,
+                    'ong_coolaboradora_id': user.id,
                     'etapa_back_id': etapa_locked.id,
                     'aporte': aporte_text,
-                    'nombre_ong_coolaboradora': ong_coolaboradora.first_name,
+                    'nombre_ong_coolaboradora': user.first_name,
                     'cantidad': cantidad,
                     'cumplido': False,
                 })
+                
+                print("Termine la transaccion")
 
         # Chequeo de todas las etapas cubiertas
         etapas_proyecto = Etapa.objects.filter(proyecto__case_id=case_id, requiere_ayuda=True)
         todas_etapas_cubiertas = not etapas_proyecto.exclude(cant_aporte_actual__gte=F('cant_aporte_necesario')).exists()
         
+        print(f"Cubre todas las etapas {todas_etapas_cubiertas}")
+        
+        print("pase los chequeos de etapas cubiertas")
+        
         if todas_etapas_cubiertas:
             project.estado = Project.ESTADO_CUBIERTO
+            project.save()
         
         # Enviar las variables a Bonita
         payload = {

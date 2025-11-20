@@ -14,6 +14,7 @@ class Etapa(models.Model):
         on_delete=models.CASCADE,
         related_name='etapas'
     )
+    #compromisos_id = models.CharField() # Se guardan los id en formato de lista, para poder convertirlo luego y marcar los mismos como cumplidos
     # Seguro hay que agregar el proyecto al que pertenece
 
     def __str__(self):

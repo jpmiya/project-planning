@@ -10,13 +10,17 @@
     <ul class="list-group">
       {% for c in commitments %}
         <li class="list-group-item">
-          {{ c }}
+          <strong>ONG:</strong> {{ c.nombre_ong }} <br>
+          <strong>Aporte:</strong> {{ c.aporte }} <br>
+          <strong>Cantidad:</strong> {{ c.cantidad }} <br>
+          <strong>Cumplido:</strong> {{ c.cumplido }}
         </li>
       {% endfor %}
     </ul>
   {% else %}
     <p>No se encontraron compromisos remotos o la API no está disponible.</p>
   {% endif %}
+
 
   <form id="finalize-form" method="post" class="mt-3">
     {% csrf_token %}

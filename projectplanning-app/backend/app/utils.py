@@ -134,15 +134,15 @@ def fetch_commitments_from_cloud(project_id, cloud_api_url: str | None = None, t
 
     # obtain token (cached inside obtain_cloud_token)
     token = obtain_cloud_token()
-    headers = {'Authorization': f'Bearer {token}'}
+    headers = {'Authorization': f'{token}'}
 
-    resp = requests.get(endpoint, params={'project_id': project_id}, headers=headers, timeout=timeout)
+    resp = requests.get(endpoint, params={'proyecto_back_id': project_id}, headers=headers, timeout=timeout)
 
     # if unauthorized, refresh token once and retry
     if resp.status_code == 401:
         token = obtain_cloud_token(force_refresh=True)
-        headers = {'Authorization': f'Bearer {token}'}
-        resp = requests.get(endpoint, params={'project_id': project_id}, headers=headers, timeout=timeout)
+        headers = {'Authorization': f'{token}'}
+        resp = requests.get(endpoint, params={'proyecto_back_id': project_id}, headers=headers, timeout=timeout)
 
     try:
         resp.raise_for_status()
