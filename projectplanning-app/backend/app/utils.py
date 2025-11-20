@@ -35,7 +35,7 @@ def verificar_etapas(data):
         if fin_etapa > fin_proyecto:
             mensajes.append(f"La fecha de fin de la Etapa {nombre_etapa} es superior a la fecha de fin del Proyecto")
         
-        if int(info_etapa['cantidad']) == 0:
+        if int(info_etapa['cantidad']) <= 0:
             mensajes.append(f"La cantidad del aporte {int(info_etapa['cantidad'])} para la Etapa {nombre_etapa} debe ser mayor a 0")
 
     return mensajes

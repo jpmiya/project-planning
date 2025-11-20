@@ -75,7 +75,7 @@ def alta_proyecto(request):
         etapas = procesar_etapas(request)
         data = {
             'nombre': nombre,
-            'ong_responsable': User.objects.get(username= ong_responsable).id,
+            'ong_responsable': User.objects.get(username=ong_responsable),
             'fecha_inicio': fecha_inicio,
             'fecha_fin': fecha_fin,
             'plan_economico': plan_economico,
@@ -139,7 +139,7 @@ def alta_proyecto(request):
             id_back_ong = User.objects.get(username=ong_responsable).id
             proyecto = {
                     "nombre": nombre,
-                    "ong_responsable": ong_responsable.first_name,
+                    "ong_responsable": ong_responsable.username,
                     "ong_back_id": id_back_ong,
                     "proyecto_back_id": project.id, # Obtener el que da la BBDD
                     "fecha_inicio": fecha_inicio,
@@ -187,7 +187,6 @@ def alta_proyecto(request):
 @csrf_exempt
 @require_GET
 def obtener_destinatarios(request):
-    # Mail fijo, despues hacemos la busqueda
     emails = list(User.objects.values_list('username', flat=True))
     return JsonResponse(emails, safe=False)
 
@@ -204,7 +203,10 @@ def set_cloud_project_id(request):
 @login_required
 def pedidos_view(request):
     """Muestra un listado de proyectos (pedidos) con botón para ver etapas."""
-    proyectos = Project.objects.filter(estado='Pendiente').prefetch_related('etapas')
+    user = request.user
+    owner_id = user.id
+    
+    proyectos = Project.objects.exclude(ong_responsable__id=owner_id).filter(estado='Pendiente').prefetch_related('etapas')
     return render(request, 'pedidos.html', {'proyectos': proyectos})
 
 @login_required
@@ -307,11 +309,11 @@ def projects_view(request):
     - Proyectos donde el usuario es colaborador (en ongs_colaboradoras)
     """
     user = request.user
-    owner_id_str = str(user.id)
+    owner_id = user.id
 
     # Proyectos originados por el usuario
     proyectos_originados = Project.objects.filter(
-        ong_responsable__in=[owner_id_str]
+        ong_responsable__id=owner_id
     ).prefetch_related('etapas', 'observation_set')
     
     # Proyectos en los que colaboró
@@ -330,7 +332,7 @@ def projects_view(request):
     
     for p in proyectos_colaborados:
         # Evitar duplicados (si está en ambos)
-        if str(p.ong_responsable) != owner_id_str:
+        if p.ong_responsable != owner_id:
             proyectos_data.append({
                 'proyecto': p,
                 'es_originante': False,
@@ -349,9 +351,9 @@ def project_compromises(request, project_id):
     """
     proyecto = get_object_or_404(Project, pk=project_id)
     user = request.user
-    owner_id_str = str(user.id)
+    owner_id = user.id
 
-    if str(proyecto.ong_responsable) != owner_id_str:
+    if proyecto.ong_responsable.id != owner_id:
         messages.error(request, 'No tienes permisos para acceder a los compromisos de este proyecto.')
         return redirect('mis_proyectos')
 
@@ -396,9 +398,9 @@ def resolver_observacion(request, observacion_id):
     
     # Verificar ownership
     user = request.user
-    owner_id_str = str(user.id)
+    owner_id = user.id
     
-    if str(proyecto.ong_responsable) != owner_id_str:
+    if proyecto.ong_responsable != owner_id:
         messages.error(request, 'No tienes permisos para modificar esta observación.')
         return redirect('mis_proyectos')
     
@@ -478,7 +480,7 @@ def tablero_gerencial_view(request):
                 proyectos_con_bonita.append({
                     'id': proyecto.id,
                     'nombre': proyecto.nombre,
-                    'ong_responsable': proyecto.ong_responsable,
+                    'ong_responsable': proyecto.ong_responsable.id,
                     'estado_bd': proyecto.estado,
                     'fecha_inicio': proyecto.fecha_inicio,
                     'fecha_fin': proyecto.fecha_fin,

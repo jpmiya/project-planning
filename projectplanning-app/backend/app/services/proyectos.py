@@ -2,6 +2,7 @@ import json
 from django.db import transaction
 from app.api.bonita import get_bonita_api
 from app.models.etapa import Etapa
+from app.models.project import Project
 from django.contrib.auth.models import User
 import datetime
 from django.db.models import F
@@ -51,7 +52,7 @@ def process_offers(project, seleccionadas, post_data, user=None):
                 if not etapa.requiere_ayuda:
                     raise ProyectosServiceError(f'La etapa "{etapa.nombre_aporte}" no está solicitando ayuda.')
 
-                aporte_text = post_data.get(f'aporte_{eid}', '').strip()
+                aporte_text =  etapa.nombre_aporte #post_data.get(f'aporte_{eid}', '').strip()
                 cantidad_raw = post_data.get(f'cantidad_{eid}', '').strip()
 
                 try:
@@ -82,6 +83,9 @@ def process_offers(project, seleccionadas, post_data, user=None):
         # Chequeo de todas las etapas cubiertas
         etapas_proyecto = Etapa.objects.filter(proyecto__case_id=case_id, requiere_ayuda=True)
         todas_etapas_cubiertas = not etapas_proyecto.exclude(cant_aporte_actual__gte=F('cant_aporte_necesario')).exists()
+        
+        if todas_etapas_cubiertas:
+            project.estado = Project.ESTADO_CUBIERTO
         
         # Enviar las variables a Bonita
         payload = {
