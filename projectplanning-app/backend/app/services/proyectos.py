@@ -54,15 +54,11 @@ def process_offers(project, seleccionadas, post_data, user=None):
 
                 aporte_text =  etapa.nombre_aporte #post_data.get(f'aporte_{eid}', '').strip()
                 cantidad_raw = post_data.get(f'cantidad_{eid}', '').strip()
-                
-                print("Obtuve los valores del request")
 
                 try:
                     cantidad = int(cantidad_raw) if cantidad_raw != '' else None
                 except (ValueError, TypeError):
                     raise ProyectosServiceError(f'Cantidad inválida para la etapa "{etapa.nombre_aporte}".')
-
-                print("Pase el try de cantidad invalida")
                 
                 if cantidad is None or cantidad <= 0:
                     raise ProyectosServiceError(f'Debe indicar una cantidad válida para la etapa "{etapa.nombre_aporte}".')
@@ -89,10 +85,6 @@ def process_offers(project, seleccionadas, post_data, user=None):
         etapas_proyecto = Etapa.objects.filter(proyecto__case_id=case_id, requiere_ayuda=True)
         todas_etapas_cubiertas = not etapas_proyecto.exclude(cant_aporte_actual__gte=F('cant_aporte_necesario')).exists()
         
-        print(f"Cubre todas las etapas {todas_etapas_cubiertas}")
-        
-        print("pase los chequeos de etapas cubiertas")
-        
         if todas_etapas_cubiertas:
             project.estado = Project.ESTADO_CUBIERTO
             project.save()
@@ -102,12 +94,12 @@ def process_offers(project, seleccionadas, post_data, user=None):
             "compromisos": aportes,
             "plan_trabajo_completo": todas_etapas_cubiertas
         }
-        api = get_bonita_api("franco.colapinto", "Williams_Fw46")
+        api = get_bonita_api("walter.bates", "bpm")
         activity = api.search_activity_by_case_id(case_id)
         if activity:
             print(f"Actividad encontrada: {activity}")
             # Asigna la tarea a un usuario
-            bates = api.get_user_id_by_username("franco.colapinto")
+            bates = api.get_user_id_by_username("walter.bates")
             api.assign_task(activity, bates)
             # Intentar ejecutar la tarea
             executed = api.execute_user_task(activity, payload)

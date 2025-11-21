@@ -37,7 +37,7 @@
                                         <div class="meta">Cantidad necesaria: {{ etapa.cant_aporte_necesario }}, actual: {{ etapa.cant_aporte_actual }} • Inicio: {{ etapa.fecha_inicio }} — Fin: {{ etapa.fecha_fin }}</div>
                                     </div>
                                     <div class="text-end">
-                                        {% if etapa.requiere_ayuda %}
+                                        {% if etapa.requiere_ayuda and etapa.cant_aporte_actual != etapa.cant_aporte_necesario %}
                                             <div class="mb-2">
                                                 <span class="badge badge-help">Requiere ayuda</span>
                                             </div>

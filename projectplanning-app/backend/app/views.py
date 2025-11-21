@@ -60,7 +60,8 @@ def register(request):
 @login_required
 def alta_proyecto(request):
     if request.method == 'GET':
-        """api = get_bonita_api("walter.bates", "bpm")
+        """ api = get_bonita_api("walter.bates", "bpm")
+        colapa = api.create_bonita_user("franco.colapinto", "Williams_Fw46", "Franco", "colapa@mail.com", "Colapinto", True)
         role_id = api.get_role_id("ONG-Coolaboradora")
         group_id = api.get_group_id("Project-Planning")
         user_id = api.get_user_id_by_username("franco.colapinto")
@@ -114,7 +115,7 @@ def alta_proyecto(request):
         
         # Llamadas de prueba con manejo de errores
         try:
-            api = get_bonita_api("franco.colapinto", "Williams_Fw46")
+            api = get_bonita_api("walter.bates", "bpm")#get_bonita_api("franco.colapinto", "Williams_Fw46")
             if not api.authenticated:
                 messages.warning(request, 'No se pudo conectar a Bonita. Revisa la configuración.')
                 return redirect('home')
@@ -363,11 +364,25 @@ def project_compromises(request, project_id):
     # POST: marcar como finalizado
     if request.method == 'POST':
 
-        #aca hay que controlar que esten todos los compromisos cumplidos antes de pasar a ejecución
-        proyecto.estado = Project.ESTADO_EN_EJECUCION if hasattr(Project, 'ESTADO_EN_EJECUCION') else 'En ejecucion'
-        proyecto.save()
-        messages.success(request, 'Proyecto marcado como Finalizado.')
-        return redirect('mis_proyectos')
+        api = get_bonita_api("walter.bates", "bpm")
+        activity = api.search_activity_by_case_id(proyecto.case_id)
+        if activity:
+            #aca hay que controlar que esten todos los compromisos cumplidos antes de pasar a ejecución
+            proyecto.estado = Project.ESTADO_EN_EJECUCION if hasattr(Project, 'ESTADO_EN_EJECUCION') else 'En ejecucion'
+            proyecto.save()
+            messages.success(request, 'Proyecto marcado como Finalizado.')
+            #print(f"Actividad encontrada: {activity}")
+            # Asigna la tarea a un usuario
+            bates = api.get_user_id_by_username("walter.bates")
+            api.assign_task(activity, bates)
+            # Intentar ejecutar la tarea
+            executed = api.execute_user_task(activity, {})
+            #print(f"Tarea ejecutada: {executed}")
+            messages.info(request, 'Se ha marcado el Plan de Trabajo como Completo')
+            return redirect('mis_proyectos')
+        else:
+            print("No se encontraron actividades pendientes (esto puede ser normal)")
+            messages.error(request, 'Ha ocurrido un error al marcar el Plan de Trabajo como completo')
 
     # GET: intentar obtener compromisos desde la API cloud si existe (cliente externo)
     commitments = []
@@ -463,7 +478,7 @@ def tablero_gerencial_view(request):
     # Conectar con Bonita
     print("DEBUG: Iniciando conexión con Bonita")
     try:
-        api = get_bonita_api("franco.colapinto", "Williams_Fw46")
+        api = get_bonita_api("walter.bates", "bpm")#get_bonita_api("franco.colapinto", "Williams_Fw46")
         print(f"DEBUG: Bonita authenticated: {api.authenticated}")
         
         if api.authenticated:
@@ -548,3 +563,61 @@ def tablero_gerencial_view(request):
         'etapas': etapas_con_tareas,
         'kpis': kpis,
     })
+    
+    
+@login_required
+def terminar_compromiso(request, compromiso_id, proyecto_id):
+    """Cumple un compromiso una vez que se haya aportado al proyecto"""
+    id_compromiso = int(compromiso_id)
+    
+    proyecto = get_object_or_404(Project, pk=proyecto_id)
+    user = request.user
+    owner_id = user.id
+
+    if proyecto.ong_responsable.id != owner_id:
+        messages.error(request, 'No tienes permisos para acceder a los compromisos de este proyecto.')
+        return redirect('mis_proyectos')
+    
+    api = get_bonita_api("walter.bates", "bpm")
+    activity = api.search_activity_by_case_id(proyecto.case_id)
+    if activity:
+        #print(f"Actividad encontrada: {activity}")
+        # Asigna la tarea a un usuario
+        bates = api.get_user_id_by_username("walter.bates")
+        api.assign_task(activity, bates)
+        # Intentar ejecutar la tarea
+        json_finalizar_compromiso = {
+            "id_compromiso": id_compromiso,
+            "cumplido": True
+        }
+        
+        payload = {
+            "json_finalizar_compromiso": json_finalizar_compromiso
+        }
+        
+        executed = api.execute_user_task(activity, payload)
+        #print(f"Tarea ejecutada: {executed}")
+        messages.info(request, 'Se ha marcado el compromiso como cumplido')
+    else:
+        print("No se encontraron actividades pendientes (esto puede ser normal)")
+        messages.error(request, 'Ha ocurrido un error al marcar el compromiso como cumplido')
+    
+    return redirect('mis_proyectos')
+
+
+@csrf_exempt
+@require_POST
+def recibir_respuesta_api(request):
+    body = request.body                     # esto es bytes
+    body_str = body.decode('utf-8')         # lo convertís a str
+    body_json = json.loads(body_str)              # lo convertís a dict de Python
+
+    etapas_cumplidas = body_json.get("etapas_cubiertas")
+    
+    if etapas_cumplidas:
+        proyecto_id = body_json.get("proyecto_id")
+        proyecto = Project.objects.get(id=proyecto_id)
+        proyecto.estado = Project.ESTADO_FINALIZADO
+        proyecto.save()
+        print(f"Estado proyecto: {proyecto.estado}")
+    return JsonResponse({"status": "ok"}, status=200)
