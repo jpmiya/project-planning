@@ -65,7 +65,7 @@ def process_offers(project, seleccionadas, post_data, user=None):
 
                 etapa_locked = Etapa.objects.select_for_update().get(pk=etapa.id)
                 if cantidad + etapa_locked.cant_aporte_actual > etapa_locked.cant_aporte_necesario:
-                    raise ProyectosServiceError(f'La cantidad solicitada para "{etapa.nombre_aporte}" excede la necesaria ({etapa_locked.cant_aporte_necesario}).')  
+                    raise ProyectosServiceError(f'La cantidad aportada excede la solicitada para el aporte "{etapa.nombre_aporte}". Se necesita la siguiente cantidad de aporte: {etapa_locked.cant_aporte_necesario - etapa_locked.cant_aporte_actual}.')  
                
                 etapa_locked.cant_aporte_actual =etapa_locked.cant_aporte_actual + cantidad
                 etapa_locked.save()

@@ -168,7 +168,7 @@ def alta_proyecto(request):
             if activity:
                 print(f"Actividad encontrada: {activity}")
                 # Asigna la tarea a un usuario
-                bates = api.get_user_id_by_username("franco.colapinto")
+                bates = api.get_user_id_by_username("walter.bates")
                 api.assign_task(activity, bates)
                 # Intentar ejecutar la tarea
                 payload = {
@@ -227,7 +227,7 @@ def ver_etapas(request, project_id):
 
         try:
             result = process_offers(proyecto, seleccionadas, request.POST, user=request.user if request.user.is_authenticated else None)
-            messages.success(request, 'Tus compromisos fueron enviados a Bonita.')
+            messages.success(request, 'Tus compromisos fueron registrados.')
         except ProyectosServiceError as pse:
             messages.error(request, str(pse))
             return redirect('ver_etapas', project_id=project_id)
