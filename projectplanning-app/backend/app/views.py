@@ -16,6 +16,7 @@ from app.models.project import Project
 from app.models.etapa import Etapa
 from app.models.ong import ONG
 from app.models.observation import Observation
+from app.models.observation_control import ObservacionControl
 from app.services.proyectos import process_offers, ProyectosServiceError
 from app.forms import RegistrationForm
 from django.contrib.auth.forms import AuthenticationForm
@@ -25,6 +26,7 @@ from django.http import HttpResponse
 from django.utils import timezone
 from django.db import models
 from datetime import timedelta
+from datetime import date
 
 
 # Create your views here.
@@ -270,6 +272,36 @@ def custom_logout_view(request):
     messages.info(request, 'Has cerrado sesión exitosamente.')
     return redirect('login')
 
+
+@login_required
+@role_required('Gerente')
+def verificacion_mensual(request):
+    today = date.today()
+    mes = today.month
+    anio = today.year
+
+    registro, creado = ObservacionControl.objects.get_or_create(
+        mes=mes,
+        anio=anio,
+        usuario=request.user,
+        defaults={'cantidad_intentos': 0}
+    )
+
+    if request.method == 'POST':
+        if registro.cantidad_intentos >= 2:
+            return JsonResponse({'error': 'Ya se realizaron las 2 observaciones de este mes.'}, status=403)
+
+        registro.cantidad_intentos += 1
+        registro.save()
+        
+        return redirect('proyectos_ejecucion')
+    
+    elif request.method == 'GET':
+        return render(request, 'control_observaciones.html', {
+            'cant_intentos': registro.cantidad_intentos
+        })
+
+@login_required
 @role_required('Gerente')
 def proyectos_ejecucion_view(request):
     """Vista para gerente: muestra proyectos en ejecución y permite agregar observaciones.
@@ -285,11 +317,40 @@ def proyectos_ejecucion_view(request):
         if project_id and observacion_text:
             try:
                 proyecto = get_object_or_404(Project, pk=int(project_id))
+                
+                # Crear el proceso en Bonita
+                api = get_bonita_api("walter.bates", "bpm")
+                process_id = api.get_process_id("Consulta Proyectos")
+                if not process_id:
+                    messages.error(request, 'No se encontró el proceso "Consulto Proyectos" en Bonita.')
+                    return redirect('home')
+                print(f"Process ID encontrado: {process_id}")
+                
+                case_id = api.initiate_project_by_id(process_id)
+                if not case_id:
+                    messages.error(request, 'No se pudo iniciar el proceso en Bonita.')
+                    return redirect('home')
+                
                 # Crear la observación asociada al proyecto
                 Observation.objects.create(
                     text=observacion_text,
-                    id_project=proyecto
+                    id_project=proyecto,
+                    case_id=case_id
                 )
+                
+                time.sleep(1) # Esto es porque si le preguntas ni bien creas el proceso, a veces encuentra ya veces no, dejamos que lo guarde bien y despues consultamos 
+                activity = api.search_activity_by_case_id(case_id)
+                if activity:
+                    print(f"Actividad encontrada: {activity}")
+                    # Asigna la tarea a un usuario
+                    bates = api.get_user_id_by_username("walter.bates")
+                    api.assign_task(activity, bates)
+                    # Intentar ejecutar la tarea
+                    executed = api.execute_user_task(activity, {})
+                    print(f"Tarea ejecutada: {executed}")
+                else:
+                    print("No se encontraron actividades pendientes (esto puede ser normal)")
+                
                 messages.success(request, f'Observación agregada exitosamente al proyecto "{proyecto.nombre}".')
             except Exception as e:
                 messages.error(request, f'Error al crear observación: {e}')
@@ -417,12 +478,26 @@ def resolver_observacion(request, observacion_id):
     # Verificar ownership
     user = request.user
     owner_id = user.id
-    
-    if proyecto.ong_responsable != owner_id:
+    if proyecto.ong_responsable.id != owner_id:
         messages.error(request, 'No tienes permisos para modificar esta observación.')
         return redirect('mis_proyectos')
     
     # Marcar como resuelto
+    
+    api = get_bonita_api("walter.bates", "bpm")
+    activity = api.search_activity_by_case_id(observacion.case_id)
+    if activity:
+        print(f"Actividad encontrada: {activity}")
+        # Asigna la tarea a un usuario
+        bates = api.get_user_id_by_username("walter.bates")
+        api.assign_task(activity, bates)
+        # Intentar ejecutar la tarea
+        executed = api.execute_user_task(activity, {})
+        print(f"Tarea ejecutada: {executed}")
+    else:
+        print("No se encontraron actividades pendientes (esto puede ser normal)")
+        
+    
     observacion.estado = Observation.ESTADO_RESUELTO
     observacion.save()
     

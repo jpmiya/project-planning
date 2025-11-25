@@ -32,9 +32,10 @@ urlpatterns = [
     path('register/', views.register, name='register'),
     path('login/', views.custom_login_view, name='login'),
     path('logout/', views.custom_logout_view, name='logout'),
-    path('proyectos_ejecucion/', views.proyectos_ejecucion_view, name='proyectos_ejecucion'),
+    path('control_observaciones/proyectos_ejecucion/', views.proyectos_ejecucion_view, name='proyectos_ejecucion'),
     path('tablero_gerencial/', views.tablero_gerencial_view, name='tablero_gerencial'),
     path('terminar-compromiso/<int:compromiso_id>/<int:proyecto_id>/', views.terminar_compromiso, name='terminar_compromiso'),
+    path('control_observaciones/', views.verificacion_mensual, name='control_observaciones'),
     #path('api/obtener_etapas_proyecto/<int:id_proyecto>/', views.obtener_etapas_proyecto, name='obtener_etapas_proyecto'),
     #path('api/obtener_proyecto/<int:id_proyecto>/', views.obtener_proyecto, name='obtener_proyecto'),
 ]
