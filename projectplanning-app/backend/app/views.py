@@ -198,6 +198,17 @@ def obtener_destinatarios(request):
 
 
 @csrf_exempt
+@require_GET
+def obtener_destinatarios_observaciones(request, proyecto_id):
+    proyecto = Project.objects.get(id=proyecto_id)
+    emails = []
+    emails.append(proyecto.ong_responsable.username)
+    for ong in proyecto.ongs_colaboradoras.iterator():
+        emails.append(ong.username)
+    return JsonResponse(emails, safe=False)
+
+
+@csrf_exempt
 @require_POST
 def set_cloud_project_id(request):
     # Mail fijo, despues hacemos la busqueda
@@ -346,7 +357,12 @@ def proyectos_ejecucion_view(request):
                     bates = api.get_user_id_by_username("walter.bates")
                     api.assign_task(activity, bates)
                     # Intentar ejecutar la tarea
-                    executed = api.execute_user_task(activity, {})
+                    payload = {
+                        "id_proyecto": project_id,
+                        "proyecto_nombre": proyecto.nombre,
+                        "observacion": observacion_text
+                    }
+                    executed = api.execute_user_task(activity, payload)
                     print(f"Tarea ejecutada: {executed}")
                 else:
                     print("No se encontraron actividades pendientes (esto puede ser normal)")

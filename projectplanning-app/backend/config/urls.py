@@ -23,6 +23,7 @@ urlpatterns = [
     path('', views.home, name='home'),
     path('alta_proyecto/', views.alta_proyecto, name='alta_proyecto'),
     path('api/destinatarios/', views.obtener_destinatarios, name='obtener_destinatarios'),
+    path('api/destinatarios_observaciones/<int:proyecto_id>/', views.obtener_destinatarios_observaciones, name='destinatarios_observaciones'),
     path('api/recibir_respuesta_api/', views.recibir_respuesta_api, name='recibir_respuesta_api'),
     path('pedidos/', views.pedidos_view, name='pedidos'),
     path('proyecto/<int:project_id>/etapas/', views.ver_etapas, name='ver_etapas'),
