@@ -524,22 +524,11 @@ def resolver_observacion(request, observacion_id):
 @login_required
 @role_required('Gerente')
 def tablero_gerencial_view(request):
-    """Tablero gerencial para Gerente: integra datos de BD local + Bonita BPM.
-    
-    Consulta 1: Proyectos abiertos con estado en Bonita
-    Consulta 2: Etapas registradas + tareas humanas pendientes
-    Consulta 3: KPIs de carga global del sistema
-    """
-    # Obtener proyectos de BD local
+    """Tablero gerencial para Gerente: integra datos de BD local + Bonita BPM."""
     proyectos_bd = Project.objects.all()
-    
-    # Inicializar estructura para consulta 1
     proyectos_con_bonita = []
-    
-    # Inicializar estructura para consulta 2
     etapas_con_tareas = []
     
-    # Inicializar estructura para consulta 3 (KPIs)
     kpis = {
         'total_proyectos': proyectos_bd.count(),
         'procesos_bonita_activos': 0,
@@ -547,17 +536,10 @@ def tablero_gerencial_view(request):
         'compromisos_pendientes': 0,
     }
     
-    # Calcular KPIs de BD (independientes de Bonita)
     # KPI 3: Usuarios activos en el mes
     fecha_mes_atras = timezone.now() - timedelta(days=30)
     usuarios_activos = User.objects.filter(last_login__gte=fecha_mes_atras)
     kpis['usuarios_activos_mes'] = usuarios_activos.count()
-    
-    # Debug: Ver todos los usuarios con last_login
-    print(f"DEBUG KPI - Fecha mes atrás: {fecha_mes_atras}")
-    print(f"DEBUG KPI - Total usuarios: {User.objects.count()}")
-    for u in User.objects.all():
-        print(f"DEBUG KPI - Usuario: {u.username}, last_login: {u.last_login}")
     
     # KPI 4: Compromisos pendientes
     etapas_pendientes = Etapa.objects.filter(
@@ -567,29 +549,41 @@ def tablero_gerencial_view(request):
     kpis['compromisos_pendientes'] = etapas_pendientes.count()
     
     # Conectar con Bonita
-    print("DEBUG: Iniciando conexión con Bonita")
     try:
-        api = get_bonita_api("walter.bates", "bpm")#get_bonita_api("franco.colapinto", "Williams_Fw46")
-        print(f"DEBUG: Bonita authenticated: {api.authenticated}")
+        api = get_bonita_api("walter.bates", "bpm")
         
         if api.authenticated:
-            # Consulta 1: Obtener casos activos de Bonita
+            # Obtener casos activos
             casos_bonita = api.get_active_cases()
-            casos_map = {caso.get('id'): caso for caso in casos_bonita}
             
-            # Integrar proyectos BD con casos Bonita
+            # Crear mapa - caso['id'] es STRING ('4003', '4004')
+            casos_map = {}
+            for caso in casos_bonita:
+                case_id = caso.get('id')  # Es string tipo '4003'
+                if case_id:
+                    try:
+                        # Convertir a int para matchear con BD
+                        case_id_int = int(case_id)
+                        casos_map[case_id_int] = caso
+                    except (ValueError, TypeError) as e:
+                        print(f"DEBUG: Error convirtiendo case_id '{case_id}': {e}")
+            
+            print(f"DEBUG: casos_map keys: {list(casos_map.keys())}")
+            
+            # Integrar proyectos con Bonita
             for proyecto in proyectos_bd:
-                caso_bonita = None
                 estado_bonita = 'N/A'
                 
-                if proyecto.case_id and proyecto.case_id in casos_map:
-                    caso_bonita = casos_map[proyecto.case_id]
-                    estado_bonita = caso_bonita.get('state', 'desconocido')
+                if proyecto.case_id:
+                    if proyecto.case_id in casos_map:
+                        caso = casos_map[proyecto.case_id]
+                        estado_bonita = caso.get('state', 'desconocido')
+                        print(f"DEBUG: Proyecto {proyecto.id} matched con case_id {proyecto.case_id}")
                 
                 proyectos_con_bonita.append({
                     'id': proyecto.id,
                     'nombre': proyecto.nombre,
-                    'ong_responsable': proyecto.ong_responsable.id,
+                    'ong_responsable': proyecto.ong_responsable.username,
                     'estado_bd': proyecto.estado,
                     'fecha_inicio': proyecto.fecha_inicio,
                     'fecha_fin': proyecto.fecha_fin,
@@ -597,27 +591,37 @@ def tablero_gerencial_view(request):
                     'estado_bonita': estado_bonita,
                 })
             
-            # Consulta 2: Obtener todas las etapas de BD
+            # Consulta 2: Etapas con tareas
             etapas_bd = Etapa.objects.select_related('proyecto').all()
-            
-            # Obtener tareas pendientes de Bonita
             tareas_bonita = api.get_pending_human_tasks()
             
-            # Crear mapa de tareas por rootContainerId (case_id)
+            # AQUÍ ESTÁ EL PROBLEMA: rootContainerId es un DICT, no un int
             tareas_por_caso = {}
             for tarea in tareas_bonita:
-                case_id = tarea.get('rootContainerId')
-                if case_id not in tareas_por_caso:
-                    tareas_por_caso[case_id] = []
-                tareas_por_caso[case_id].append(tarea)
+                # rootContainerId es un dict con la info del proceso
+                root_container = tarea.get('rootContainerId')
+                if root_container and isinstance(root_container, dict):
+                    # El ID real está DENTRO del dict
+                    root_case_id = root_container.get('id')
+                    if root_case_id:
+                        try:
+                            # Convertir a int para matchear con proyecto.case_id
+                            root_case_id_int = int(root_case_id)
+                            if root_case_id_int not in tareas_por_caso:
+                                tareas_por_caso[root_case_id_int] = []
+                            tareas_por_caso[root_case_id_int].append(tarea)
+                        except (ValueError, TypeError) as e:
+                            print(f"DEBUG: Error convirtiendo root_case_id '{root_case_id}': {e}")
             
-            # Integrar etapas BD con tareas Bonita
+            print(f"DEBUG: tareas_por_caso keys: {list(tareas_por_caso.keys())}")
+            
+            # Integrar etapas con tareas
             for etapa in etapas_bd:
                 proyecto = etapa.proyecto
-                tareas_pendientes = []
+                tareas = []
                 
                 if proyecto.case_id:
-                    tareas_pendientes = tareas_por_caso.get(proyecto.case_id, [])
+                    tareas = tareas_por_caso.get(proyecto.case_id, [])
                 
                 etapas_con_tareas.append({
                     'id': etapa.id,
@@ -627,26 +631,25 @@ def tablero_gerencial_view(request):
                     'cant_necesario': etapa.cant_aporte_necesario,
                     'cant_actual': etapa.cant_aporte_actual,
                     'requiere_ayuda': etapa.requiere_ayuda,
-                    'tareas_pendientes': len(tareas_pendientes),
+                    'tareas_pendientes': len(tareas),
                     'tareas_detalle': [
                         {
                             'nombre': t.get('name', 'Sin nombre'),
                             'id': t.get('id'),
                             'estado': t.get('state', 'N/A'),
                         }
-                        for t in tareas_pendientes
+                        for t in tareas
                     ],
                 })
             
-            # KPI 2: Procesos Bonita activos (casos activos)
             kpis['procesos_bonita_activos'] = len(casos_bonita)
-            
         else:
-            print("DEBUG: No se pudo autenticar con Bonita")
             messages.warning(request, 'No se pudo autenticar con Bonita BPM.')
     
     except Exception as e:
-        print(f"DEBUG: Error al conectar con Bonita: {str(e)}")
+        print(f"ERROR Bonita: {str(e)}")
+        import traceback
+        traceback.print_exc()
         messages.error(request, f'Error al conectar con Bonita: {str(e)}')
     
     return render(request, 'tablero_gerencial.html', {
